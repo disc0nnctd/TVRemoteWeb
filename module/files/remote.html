@@ -1,0 +1,754 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Beem470 Remote</title>
+<style>
+  :root {
+    --bg:#0b0d10; --card:#161a20; --acc:#4c9dff; --acc2:#ff7a4c;
+    --txt:#e9edf1; --muted:#7d8894; --line:#2c3542; --sunk:#0f1216;
+    --nav-h: 62px;
+  }
+  * { box-sizing:border-box; }
+  html,body {
+    margin:0; padding:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    height:100%; overflow-x:hidden; overscroll-behavior:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body.padding { overflow:hidden; }
+
+  /* ---------- header ---------- */
+  header {
+    position:sticky; top:0; z-index:20; background:rgba(11,13,16,.94);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+    padding:10px 14px calc(8px + env(safe-area-inset-top,0px));
+    padding-top:calc(10px + env(safe-area-inset-top,0px));
+    display:flex; align-items:center; gap:8px;
+  }
+  header h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.4px; flex:1; }
+  header .host { color:var(--muted); font-weight:400; font-size:11px; margin-left:6px; }
+  .wsdot { width:8px; height:8px; border-radius:50%; background:#555e69; flex:0 0 auto; transition:background .3s, box-shadow .3s; }
+  body[data-ws="ok"]  .wsdot { background:#3fb950; box-shadow:0 0 8px #3fb950; }
+  body[data-ws="off"] .wsdot { background:#ff6b6b; box-shadow:0 0 8px #ff6b6b; }
+  .status { font-size:10px; color:var(--muted); max-width:42vw; overflow:hidden;
+            text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+
+  /* ---------- layout ---------- */
+  .wrap { max-width:560px; margin:0 auto; padding:12px 12px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom,0px)); }
+  .tabpane { display:none; }
+  .tabpane.on { display:block; animation:fade .18s ease; }
+  @keyframes fade { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:none;} }
+
+  .card { background:var(--card); border-radius:14px; padding:12px; margin-bottom:12px;
+          box-shadow:0 2px 10px rgba(0,0,0,.35); }
+  .sec { font-size:10px; color:var(--muted); text-transform:uppercase;
+         letter-spacing:1.2px; margin:0 0 9px 3px; font-weight:600; }
+  .sec .note { text-transform:none; letter-spacing:0; font-weight:400; color:var(--muted); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .row + .row { margin-top:8px; }
+
+  /* ---------- controls ---------- */
+  button {
+    font-size:14px; padding:14px 10px; border:none; border-radius:10px;
+    background:#20262e; color:var(--txt); font-weight:600; flex:1 1 auto;
+    min-width:44px; cursor:pointer; transition:transform .05s, background .15s;
+    touch-action:manipulation; font-family:inherit;
+  }
+  button:active { transform:scale(.95); background:#2c3542; }
+  button.acc  { background:var(--acc);  color:#fff; }
+  button.acc2 { background:var(--acc2); color:#fff; }
+  button.ghost{ background:transparent; border:1px solid var(--line); color:var(--muted); }
+  button.warn { color:#ffb84c; }
+  button.danger { color:#ff6b6b; }
+
+  .dpad { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,66px); gap:8px; }
+  .dpad button { font-size:22px; }
+  .dpad .ok { background:var(--acc); color:#fff; font-size:15px; border-radius:14px; }
+  .dpad .sp { visibility:hidden; }
+
+  .txtrow { display:flex; gap:8px; }
+  input[type=text] {
+    flex:1; padding:14px 12px; font-size:15px; border-radius:10px;
+    border:1px solid var(--line); background:var(--sunk); color:var(--txt);
+    font-family:inherit; min-width:0;
+  }
+  input[type=text]:focus { outline:none; border-color:var(--acc); }
+  .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .apps button { padding:16px 10px; font-size:14px; }
+
+  /* ---------- touchpad ---------- */
+  .pad { position:relative; height:44vh; min-height:220px; max-height:380px;
+         background:var(--sunk); border:1px solid var(--line); border-radius:12px;
+         touch-action:none; overflow:hidden; user-select:none;
+         -webkit-user-select:none; -webkit-touch-callout:none; }
+  .pad:active { background:#12161c; }
+  .pad .hint { position:absolute; inset:0; display:flex; align-items:center;
+               justify-content:center; color:var(--muted); font-size:12px;
+               pointer-events:none; padding:0 20px; text-align:center; }
+  .pad .cursor { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px;
+                 border-radius:50%; background:var(--acc); box-shadow:0 0 12px var(--acc);
+                 transition:opacity .2s; pointer-events:none; }
+  .padrow { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px; }
+  .sensor { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .sensor input[type=range] { flex:1; accent-color:var(--acc); }
+  .sensor label { font-size:11px; color:var(--muted); min-width:38px; }
+
+  /* ---------- stats ---------- */
+  .stats { display:grid; grid-template-columns:1fr auto; gap:7px 12px; font-size:12.5px; align-items:baseline; }
+  .stats .k { color:var(--muted); }
+  .stats .v { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap; }
+  .stats .v.hot  { color:#ff6b6b; }
+  .stats .v.warm { color:#ffb84c; }
+  .stats .bar { grid-column:1 / -1; height:6px; background:var(--sunk);
+                border-radius:3px; overflow:hidden; margin:1px 0 4px; }
+  .stats .bar > i { display:block; height:100%; background:var(--acc);
+                    border-radius:3px; transition:width .4s; }
+  .stats .bar > i.hot  { background:#ff6b6b; }
+  .stats .bar > i.warm { background:#ffb84c; }
+  .stats .lbl { grid-column:1 / -1; font-size:9.5px; color:var(--muted);
+                text-transform:uppercase; letter-spacing:1.2px; margin-top:9px;
+                padding-bottom:3px; border-bottom:1px solid var(--line); }
+  .stats .lbl:first-child { margin-top:0; }
+  .ctl { display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; }
+  .ctl button { font-size:11px; padding:7px 11px; flex:0 0 auto; }
+  .ctl button.live.on { background:var(--acc); color:#fff; border-color:var(--acc); }
+  .meta { font-size:10px; color:var(--muted); text-align:right; margin-top:8px; }
+
+  /* ---------- processes ---------- */
+  .proc-list { display:flex; flex-direction:column; gap:5px; }
+  .proc { display:grid; grid-template-columns:42px 1fr auto auto 46px; gap:8px;
+          align-items:center; padding:8px; background:var(--sunk);
+          border-radius:8px; font-size:11px; }
+  .proc .pid  { color:var(--muted); font-family:ui-monospace,monospace; font-size:10px; }
+  .proc .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .proc .cpu, .proc .mem { text-align:right; font-variant-numeric:tabular-nums;
+                           color:var(--muted); font-size:10.5px; min-width:34px; }
+  .proc .cpu.hot { color:#ff6b6b; font-weight:700; }
+  .proc button { padding:7px 6px; font-size:10px; background:#3a1f22; color:#ff9b9b; flex:none; }
+  .proc button:active { background:#5a2a2f; }
+  .empty { text-align:center; color:var(--muted); padding:24px 10px; font-size:11px; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grid2 button { padding:13px 8px; font-size:12.5px; }
+  pre.log { display:none; margin-top:10px; max-height:280px; overflow:auto;
+            background:var(--sunk); padding:9px; border-radius:8px; font-size:10px;
+            color:#c9d1d9; white-space:pre-wrap; word-break:break-all;
+            font-family:ui-monospace,monospace; }
+
+  /* ---------- bottom tab bar ---------- */
+  nav {
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    background:rgba(16,20,26,.97); backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    display:flex; height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  nav button {
+    flex:1; background:none; border:none; border-radius:0; padding:6px 2px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; color:var(--muted); font-size:10px; font-weight:600; min-width:0;
+    transition:color .15s;
+  }
+  nav button:active { transform:none; background:rgba(255,255,255,.04); }
+  nav button .ic { font-size:19px; line-height:1; }
+  nav button.on { color:var(--acc); }
+  nav button.on .ic { transform:translateY(-1px); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="wsdot" id="wsdot" title="mouse daemon link"></span>
+  <h1>Beem470<span class="host" id="host"></span></h1>
+  <span class="status" id="s"></span>
+</header>
+
+<div class="wrap">
+
+  <!-- ================= REMOTE ================= -->
+  <section class="tabpane on" data-tab="remote">
+    <div class="card">
+      <div class="sec">Navigation</div>
+      <div class="dpad">
+        <button class="sp"></button><button data-k="UP">▲</button><button class="sp"></button>
+        <button data-k="LEFT">◀</button><button class="ok" data-k="OK">OK</button><button data-k="RIGHT">▶</button>
+        <button class="sp"></button><button data-k="DOWN">▼</button><button class="sp"></button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button data-k="BACK">↩ Back</button>
+        <button data-k="HOME">⌂ Home</button>
+        <button data-sys="recent">▤ Recent</button>
+        <button data-k="MENU">☰ Menu</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Media</div>
+      <div class="row">
+        <button data-k="MEDIA_PLAY_PAUSE" class="acc">⏯</button>
+        <button data-k="MEDIA_PREVIOUS">⏮</button>
+        <button data-k="MEDIA_REWIND">⏪</button>
+        <button data-k="MEDIA_FAST_FORWARD">⏩</button>
+        <button data-k="MEDIA_NEXT">⏭</button>
+      </div>
+      <div class="row">
+        <button data-sys="voldown">🔉 Vol −</button>
+        <button data-sys="mute">🔇 Mute</button>
+        <button data-sys="volup">🔊 Vol +</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Text Input</div>
+      <div class="txtrow">
+        <input type="text" id="txt" placeholder="Type here → Send"
+               autocomplete="off" autocapitalize="none" autocorrect="off">
+        <button class="acc" id="send" style="flex:0 0 auto">Send</button>
+      </div>
+      <div class="row">
+        <button data-k="DEL" class="ghost">⌫ Del</button>
+        <button data-k="FORWARD_DEL" class="ghost">Del ⌦</button>
+        <button data-k="ENTER" class="ghost">↵ Enter</button>
+        <button data-k="TAB" class="ghost">⇥ Tab</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAD ================= -->
+  <section class="tabpane" data-tab="pad">
+    <div class="card">
+      <div class="sec">Touchpad <span class="note">— drag to move · tap to click · hold for right-click · 2 fingers to scroll</span></div>
+      <div class="pad" id="pad">
+        <div class="hint" id="padhint">drag · tap · long-press · 2-finger scroll</div>
+        <div class="cursor" id="cursor" style="left:50%;top:50%;opacity:1"></div>
+      </div>
+      <div class="sensor">
+        <label>Speed</label>
+        <input type="range" id="sens" min="1" max="6" step="0.5" value="2.5">
+        <span id="sensv" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right">2.5×</span>
+      </div>
+      <div class="padrow">
+        <button id="click">Click</button>
+        <button id="dclick">Double</button>
+        <button id="rclick">Right</button>
+        <button id="center" class="ghost">Center</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Scroll</div>
+      <div class="row">
+        <button id="scrollup">▲ Up</button>
+        <button id="scrolldn">▼ Down</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APPS ================= -->
+  <section class="tabpane" data-tab="apps">
+    <div class="card">
+      <div class="sec">TV Apps
+        <span class="note">— tap to launch · long-press to pin</span>
+      </div>
+      <div class="ctl">
+        <button class="ghost" id="apps-refresh">↻ Rescan</button>
+      </div>
+      <div class="apps" id="apps-tv"><div class="empty">loading…</div></div>
+    </div>
+
+    <div class="card" id="apps-other-card" style="display:none">
+      <div class="sec">Other Apps</div>
+      <div class="apps" id="apps-other"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Open URL on SmartTube</div>
+      <div class="txtrow">
+        <input type="text" id="url" placeholder="paste YouTube URL / video ID"
+               autocomplete="off" autocapitalize="none" autocorrect="off">
+        <button class="acc" id="openurl" style="flex:0 0 auto">▶ Play</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Show QR on TV</div>
+      <div class="row">
+        <button id="show-qr" class="acc">📱 Show QR</button>
+        <button id="hide-splash" class="ghost">✕ Dismiss</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STATS ================= -->
+  <section class="tabpane" data-tab="stats">
+    <div class="card">
+      <div class="sec">System Stats</div>
+      <div class="ctl">
+        <button class="ghost" id="stats-refresh">↻ Refresh</button>
+        <button class="ghost live" id="stats-live">Live: off</button>
+      </div>
+      <div class="stats">
+        <div class="lbl">Temperature</div>
+        <div class="k">CPU</div><div class="v" data-s="cpu_temp">–</div>
+        <div class="k">GPU</div><div class="v" data-s="gpu_temp">–</div>
+        <div class="lbl">Processor</div>
+        <div class="k">Frequency</div><div class="v" data-s="cpu_freq">–</div>
+        <div class="k">Load 1/5/15m</div><div class="v" data-s="load_1m">–</div>
+        <div class="lbl">Memory</div>
+        <div class="k">Used</div><div class="v" data-s="mem_used">–</div>
+        <div class="bar"><i data-s="mem_bar" style="width:0"></i></div>
+        <div class="k">Swap (zram)</div><div class="v" data-s="swap_used">–</div>
+        <div class="lbl">Storage /data</div>
+        <div class="k" data-s="st_used">–</div><div class="v" data-s="st_pct">–</div>
+        <div class="bar"><i data-s="st_bar" style="width:0"></i></div>
+        <div class="lbl">System</div>
+        <div class="k">Uptime</div><div class="v" data-s="uptime">–</div>
+        <div class="k">IP address</div><div class="v" data-s="ip">–</div>
+      </div>
+      <div class="meta" id="stats-ts">not loaded</div>
+    </div>
+  </section>
+
+  <!-- ================= TOOLS ================= -->
+  <section class="tabpane" data-tab="tools">
+    <div class="card">
+      <div class="sec">Processes <span class="note">— top 15 by CPU</span></div>
+      <div class="ctl">
+        <button class="ghost" id="proc-refresh">↻ Refresh</button>
+      </div>
+      <div class="proc-list" id="proc-list">
+        <div class="empty">Tap ↻ Refresh to load</div>
+      </div>
+      <div class="meta" id="proc-ts"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Maintenance</div>
+      <div class="grid2">
+        <button data-admin="trim_cache">🧹 Trim Cache</button>
+        <button data-admin="drop_caches">💧 Drop Cache</button>
+        <button data-admin="restart_httpd"  class="warn">↻ httpd</button>
+        <button data-admin="restart_mouse"  class="warn">↻ mousedaemon</button>
+        <button data-admin="wifi_reconnect" class="warn">📶 Cycle Wi-Fi</button>
+        <button id="show-logcat">📋 Logcat</button>
+      </div>
+      <pre class="log" id="logcat-out"></pre>
+    </div>
+
+    <div class="card">
+      <div class="sec">System</div>
+      <div class="grid2">
+        <button data-sys="settings">⚙ Settings</button>
+        <button data-sys="wifi_settings">📶 Wi-Fi</button>
+        <button data-sys="notif">🔔 Notifications</button>
+        <button data-sys="screen_off" class="ghost">◐ Screen Off</button>
+      </div>
+      <div class="row">
+        <button data-sys="reboot" class="ghost danger">⟳ Reboot Projector</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<nav id="nav">
+  <button data-go="remote" class="on"><span class="ic">🎮</span>Remote</button>
+  <button data-go="pad"><span class="ic">🖱️</span>Pad</button>
+  <button data-go="apps"><span class="ic">📺</span>Apps</button>
+  <button data-go="stats"><span class="ic">📊</span>Stats</button>
+  <button data-go="tools"><span class="ic">🛠️</span>Tools</button>
+</nav>
+
+<script>
+const params = new URLSearchParams(location.search);
+const token  = params.get('token') || '';
+document.getElementById('host').textContent = location.host;
+
+/* ---------------- tabs ---------------- */
+const panes = document.querySelectorAll('.tabpane');
+const navBtns = document.querySelectorAll('nav button[data-go]');
+function showTab(name, remember) {
+  let found = false;
+  panes.forEach(p => { const on = p.dataset.tab === name; p.classList.toggle('on', on); if (on) found = true; });
+  if (!found) return showTab('remote', remember);
+  navBtns.forEach(b => b.classList.toggle('on', b.dataset.go === name));
+  window.scrollTo(0, 0);
+  if (remember !== false) localStorage.setItem('tab', name);
+  if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
+  if (name === 'tools' && !procsLoaded) { procsLoaded = true; pullProcs(); }
+  if (name === 'apps'  && !appsLoaded)  { appsLoaded  = true; pullApps(); }
+}
+navBtns.forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+
+/* ---------------- WebSocket to native mousedaemon (port 8788) ---------------- */
+let ws = null, wsReady = false, wsPending = [];
+function wsConnect() {
+  const url = `ws://${location.hostname}:8788/`;
+  try { ws = new WebSocket(url); } catch (e) { setTimeout(wsConnect, 1500); return; }
+  ws.onopen = () => {
+    wsReady = true; ws.send('T ' + token);
+    for (const m of wsPending) ws.send(m);
+    wsPending = []; document.body.dataset.ws = 'ok';
+  };
+  ws.onclose = () => { wsReady = false; ws = null; document.body.dataset.ws = 'off'; setTimeout(wsConnect, 1500); };
+  ws.onerror = () => { try { ws.close(); } catch(e){} };
+}
+wsConnect();
+function wsSend(m) {
+  if (wsReady && ws) { ws.send(m); return true; }
+  if (wsPending.length < 100) wsPending.push(m);
+  return false;
+}
+
+/* ---------------- CGI call ---------------- */
+const sEl = document.getElementById('s');
+async function call(qs) {
+  sEl.textContent = '…';
+  try {
+    const r = await fetch('/cgi-bin/remote.cgi?' + qs + (token ? '&token=' + encodeURIComponent(token) : ''), {cache:'no-store'});
+    const j = await r.json();
+    sEl.textContent = j.detail || j.status;
+  } catch (e) { sEl.textContent = 'err: ' + e.message; }
+}
+
+document.querySelectorAll('button[data-k]').forEach(b   => b.addEventListener('click', () => call('k='   + b.dataset.k)));
+document.querySelectorAll('button[data-sys]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.sys === 'reboot' && !confirm('Reboot the projector?')) return;
+  call('sys=' + b.dataset.sys);
+}));
+document.querySelectorAll('button[data-app]').forEach(b => b.addEventListener('click', () => call('app=' + b.dataset.app)));
+
+/* ---------------- text input ---------------- */
+document.getElementById('send').addEventListener('click', () => {
+  const el = document.getElementById('txt');
+  if (!el.value) return;
+  call('t=' + encodeURIComponent(el.value));
+  el.value = '';
+});
+document.getElementById('txt').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('send').click(); }
+});
+
+/* ---------------- URL → SmartTube ---------------- */
+document.getElementById('openurl').addEventListener('click', () => {
+  const u = document.getElementById('url').value.trim();
+  if (!u) return;
+  call('url=' + encodeURIComponent(u) + '&app=org.smarttube.stable');
+});
+document.getElementById('url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('openurl').click(); }
+});
+
+/* ---------------- QR splash ---------------- */
+document.getElementById('show-qr').addEventListener('click',     () => call('splash=show'));
+document.getElementById('hide-splash').addEventListener('click', () => call('k=BACK'));
+
+/* ---------------- Touchpad (real mouse via /dev/input/event7) ---------------- */
+let sens = parseFloat(localStorage.getItem('sens') || '2.5');
+const pad    = document.getElementById('pad');
+const cur    = document.getElementById('cursor');
+const hint   = document.getElementById('padhint');
+const sensEl = document.getElementById('sens');
+const sensV  = document.getElementById('sensv');
+
+sensEl.value = sens;
+sensV.textContent = sens.toFixed(1) + '×';
+sensEl.addEventListener('input', () => {
+  sens = parseFloat(sensEl.value);
+  sensV.textContent = sens.toFixed(1) + '×';
+  localStorage.setItem('sens', sens);
+});
+
+let localX = 0.5, localY = 0.5;
+function updateCursorVisual() {
+  cur.style.left = (localX * 100) + '%';
+  cur.style.top  = (localY * 100) + '%';
+  cur.style.opacity = 1;
+  hint.style.opacity = 0;
+}
+updateCursorVisual();
+
+let touches = new Map();
+let startTime = 0, moved = 0, scrollAccum = 0;
+let longPressTimer = null;
+let pendingDx = 0, pendingDy = 0, sendTimer = null;
+
+function flushMove() {
+  if (pendingDx === 0 && pendingDy === 0) { sendTimer = null; return; }
+  const dx = Math.round(pendingDx), dy = Math.round(pendingDy);
+  pendingDx -= dx; pendingDy -= dy;
+  if (!wsSend(`M ${dx} ${dy}`)) call(`mv=${dx},${dy}`);
+  sendTimer = setTimeout(flushMove, 12);
+}
+function queueMove(dx, dy) {
+  pendingDx += dx; pendingDy += dy;
+  if (!sendTimer) sendTimer = setTimeout(flushMove, 8);
+}
+function wsClick(b) { if (!wsSend('C' + b)) call('mc=' + b); }
+function wsWheel(n) { if (!wsSend('W ' + n)) call('mw=' + n); }
+
+setTimeout(() => { hint.style.transition='opacity .5s'; hint.style.opacity=0.4; }, 800);
+
+const PASS = {passive:false};
+pad.addEventListener('touchstart', e => {
+  e.preventDefault();
+  document.body.classList.add('padding');
+  for (const t of e.changedTouches) touches.set(t.identifier, {x:t.clientX, y:t.clientY});
+  if (touches.size === 1) {
+    startTime = Date.now(); moved = 0;
+    longPressTimer = setTimeout(() => {
+      if (moved < 8) { wsClick('R'); navigator.vibrate && navigator.vibrate(30); }
+      longPressTimer = null;
+    }, 500);
+  }
+}, PASS);
+
+pad.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (touches.size === 2) {
+    let dySum = 0, n = 0;
+    for (const t of e.changedTouches) {
+      const prev = touches.get(t.identifier);
+      if (prev) { dySum += (t.clientY - prev.y); n++; touches.set(t.identifier, {x:t.clientX, y:t.clientY}); }
+    }
+    if (n) {
+      scrollAccum += dySum / n;
+      if (Math.abs(scrollAccum) > 20) {
+        const clicks = Math.round(scrollAccum / 20);
+        wsWheel(clicks);
+        scrollAccum -= clicks * 20;
+      }
+    }
+    return;
+  }
+  const t = e.changedTouches[0];
+  const prev = touches.get(t.identifier);
+  if (!prev) return;
+  const dx = (t.clientX - prev.x) * sens;
+  const dy = (t.clientY - prev.y) * sens;
+  moved += Math.abs(dx) + Math.abs(dy);
+  touches.set(t.identifier, {x:t.clientX, y:t.clientY});
+  const rect = pad.getBoundingClientRect();
+  localX = Math.max(0, Math.min(1, (t.clientX - rect.left) / rect.width));
+  localY = Math.max(0, Math.min(1, (t.clientY - rect.top)  / rect.height));
+  updateCursorVisual();
+  queueMove(dx, dy);
+}, PASS);
+
+function endTouch(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) touches.delete(t.identifier);
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  if (touches.size === 0) {
+    document.body.classList.remove('padding');
+    const dur = Date.now() - startTime;
+    if (moved < 10 && dur < 300) { wsClick('L'); navigator.vibrate && navigator.vibrate(10); }
+  }
+}
+pad.addEventListener('touchend',    endTouch, PASS);
+pad.addEventListener('touchcancel', endTouch, PASS);
+
+document.getElementById('click').addEventListener('click',  () => wsClick('L'));
+document.getElementById('rclick').addEventListener('click', () => wsClick('R'));
+document.getElementById('dclick').addEventListener('click', () => { wsClick('L'); setTimeout(() => wsClick('L'), 90); });
+document.getElementById('center').addEventListener('click', () => { localX = 0.5; localY = 0.5; updateCursorVisual(); });
+document.getElementById('scrollup').addEventListener('click', () => wsWheel(3));
+document.getElementById('scrolldn').addEventListener('click', () => wsWheel(-3));
+
+/* ---------------- app launcher (enumerated from the device) ---------------- */
+let appsLoaded = false;
+const PINS = 'pinnedApps';
+const getPins = () => { try { return JSON.parse(localStorage.getItem(PINS) || '[]'); } catch(e){ return []; } };
+const setPins = a => localStorage.setItem(PINS, JSON.stringify(a));
+
+function renderApps(data) {
+  const tvBox    = document.getElementById('apps-tv');
+  const otherBox = document.getElementById('apps-other');
+  const otherCard= document.getElementById('apps-other-card');
+  const pins = getPins();
+
+  const btn = a => {
+    const pinned = pins.includes(a.pkg);
+    const b = document.createElement('button');
+    b.textContent = (pinned ? '★ ' : '') + a.label;
+    b.title = a.pkg;
+    if (pinned) b.className = 'acc';
+    b.addEventListener('click', () => call('app=' + a.pkg));
+    let lp = null;
+    const togglePin = () => {
+      const p = getPins();
+      const i = p.indexOf(a.pkg);
+      if (i >= 0) p.splice(i, 1); else p.push(a.pkg);
+      setPins(p);
+      renderApps(data);
+      navigator.vibrate && navigator.vibrate(20);
+    };
+    b.addEventListener('touchstart', () => { lp = setTimeout(togglePin, 550); }, {passive:true});
+    b.addEventListener('touchend',   () => { if (lp) { clearTimeout(lp); lp = null; } }, {passive:true});
+    b.addEventListener('touchmove',  () => { if (lp) { clearTimeout(lp); lp = null; } }, {passive:true});
+    b.addEventListener('contextmenu', e => { e.preventDefault(); togglePin(); });
+    return b;
+  };
+
+  // pinned first, then alphabetical
+  const order = list => list.slice().sort((x, y) => {
+    const px = pins.includes(x.pkg), py = pins.includes(y.pkg);
+    if (px !== py) return px ? -1 : 1;
+    return x.label.localeCompare(y.label);
+  });
+
+  tvBox.innerHTML = '';
+  const tv = order(data.tv || []);
+  if (!tv.length) tvBox.innerHTML = '<div class="empty">no TV apps found</div>';
+  else tv.forEach(a => tvBox.appendChild(btn(a)));
+
+  otherBox.innerHTML = '';
+  const other = order(data.other || []);
+  otherCard.style.display = other.length ? '' : 'none';
+  other.forEach(a => otherBox.appendChild(btn(a)));
+}
+
+async function pullApps() {
+  const tvBox = document.getElementById('apps-tv');
+  tvBox.innerHTML = '<div class="empty">scanning…</div>';
+  try {
+    const r = await fetch('/cgi-bin/apps.cgi?token=' + encodeURIComponent(token), {cache:'no-store'});
+    if (!r.ok) { tvBox.innerHTML = '<div class="empty">error ' + r.status + '</div>'; return; }
+    renderApps(await r.json());
+  } catch (e) {
+    tvBox.innerHTML = '<div class="empty">scan failed</div>';
+  }
+}
+document.getElementById('apps-refresh').addEventListener('click', pullApps);
+
+/* ---------------- stats + processes ---------------- */
+let statsLoaded = false, procsLoaded = false;
+const setEl = k => document.querySelector('[data-s="' + k + '"]');
+const set   = (k, v)   => { const el = setEl(k); if (el) el.textContent = v; };
+const setW  = (k, pct) => { const el = setEl(k); if (el) { el.style.width = pct + '%';
+                            el.classList.toggle('hot', pct > 85);
+                            el.classList.toggle('warm', pct > 70 && pct <= 85); } };
+const setT  = (k, c)   => { const el = setEl(k); if (el) { el.textContent = c.toFixed(1) + '°C';
+                            el.classList.toggle('hot', c >= 75);
+                            el.classList.toggle('warm', c >= 65 && c < 75); } };
+const fmtMB = kb => (kb/1024).toFixed(0) + ' MB';
+const fmtGB = kb => (kb/1024/1024).toFixed(2) + ' GB';
+const tsEl    = document.getElementById('stats-ts');
+const procList= document.getElementById('proc-list');
+const procTs  = document.getElementById('proc-ts');
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+function renderProcs(procs) {
+  if (!procs || !procs.length) { procList.innerHTML = '<div class="empty">no data</div>'; return; }
+  procList.innerHTML = procs.map(p => {
+    const cpu  = parseFloat(p.cpu) || 0;
+    const name = esc(p.name || '?');
+    return '<div class="proc">' +
+      '<span class="pid">' + esc(p.pid) + '</span>' +
+      '<span class="name" title="' + name + '">' + name + '</span>' +
+      '<span class="cpu' + (cpu > 20 ? ' hot' : '') + '">' + cpu + '%</span>' +
+      '<span class="mem">' + esc(p.mem) + '%</span>' +
+      '<button data-kill="' + esc(p.pid) + '">Kill</button>' +
+    '</div>';
+  }).join('');
+  procList.querySelectorAll('[data-kill]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!confirm('Kill PID ' + b.dataset.kill + '?')) return;
+      call('kill=' + b.dataset.kill).then(() => setTimeout(pullProcs, 400));
+    });
+  });
+}
+
+async function pullStats(includeProcs) {
+  tsEl.textContent = 'loading…';
+  try {
+    const q = (includeProcs ? '?top=15&token=' : '?token=') + encodeURIComponent(token);
+    const r = await fetch('/cgi-bin/stats.cgi' + q, {cache:'no-store'});
+    if (!r.ok) { tsEl.textContent = 'error ' + r.status; return; }
+    const s = await r.json();
+    setT('cpu_temp', s.cpu_temp);
+    setT('gpu_temp', s.gpu_temp);
+    set('cpu_freq', s.cpu_freq_mhz + ' MHz × ' + s.cpu_cores);
+    set('load_1m',  s.load_1m.toFixed(2) + ' / ' + s.load_5m.toFixed(2) + ' / ' + s.load_15m.toFixed(2));
+    const memUsed = s.mem_total_kb - s.mem_avail_kb;
+    const memPct  = Math.round(memUsed / s.mem_total_kb * 100);
+    set('mem_used', fmtMB(memUsed) + ' / ' + fmtMB(s.mem_total_kb) + '  (' + memPct + '%)');
+    setW('mem_bar', memPct);
+    if (s.swap_total_kb) {
+      const swUsed = s.swap_total_kb - s.swap_free_kb;
+      set('swap_used', fmtMB(swUsed) + ' / ' + fmtMB(s.swap_total_kb));
+    }
+    set('st_used', 'Used ' + fmtGB(s.storage_used_kb) + ' of ' + fmtGB(s.storage_total_kb));
+    set('st_pct',  s.storage_pct + '%');
+    setW('st_bar', s.storage_pct);
+    const u = s.uptime_d ? (s.uptime_d + 'd ' + s.uptime_h + 'h')
+            : (s.uptime_h ? (s.uptime_h + 'h ' + s.uptime_m + 'm') : (s.uptime_m + 'm'));
+    set('uptime', u);
+    set('ip', s.ip || '–');
+    tsEl.textContent = 'updated ' + new Date().toLocaleTimeString();
+    if (includeProcs && s.procs) {
+      renderProcs(s.procs);
+      procTs.textContent = 'updated ' + new Date().toLocaleTimeString();
+    }
+  } catch (e) { tsEl.textContent = 'fetch failed'; }
+}
+async function pullProcs() { await pullStats(true); }
+
+let liveTimer = null;
+const liveBtn = document.getElementById('stats-live');
+function setLive(on) {
+  if (on) {
+    liveBtn.classList.add('on'); liveBtn.textContent = 'Live: on';
+    pullStats(false);
+    liveTimer = setInterval(() => pullStats(false), 5000);
+  } else {
+    liveBtn.classList.remove('on'); liveBtn.textContent = 'Live: off';
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  }
+  localStorage.setItem('statsLive', on ? '1' : '0');
+}
+document.getElementById('stats-refresh').addEventListener('click', () => pullStats(false));
+liveBtn.addEventListener('click', () => setLive(liveTimer === null));
+document.getElementById('proc-refresh').addEventListener('click', pullProcs);
+
+/* pause live polling when the tab is hidden */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && liveTimer) { clearInterval(liveTimer); liveTimer = null; liveBtn.textContent = 'Live: off'; liveBtn.classList.remove('on'); }
+});
+
+/* ---------------- maintenance ---------------- */
+document.querySelectorAll('[data-admin]').forEach(b => {
+  b.addEventListener('click', () => {
+    const a = b.dataset.admin;
+    if (['restart_httpd','restart_mouse','wifi_reconnect','drop_caches'].includes(a) && !confirm('Run: ' + a + ' ?')) return;
+    call('admin=' + a);
+  });
+});
+document.getElementById('show-logcat').addEventListener('click', async () => {
+  const out = document.getElementById('logcat-out');
+  out.style.display = 'block';
+  out.textContent = 'loading…';
+  try {
+    const r = await fetch('/cgi-bin/remote.cgi?admin=logcat&token=' + encodeURIComponent(token), {cache:'no-store'});
+    out.textContent = await r.text();
+    out.scrollTop = out.scrollHeight;
+  } catch (e) { out.textContent = 'failed'; }
+});
+
+/* ---------------- desktop keyboard shortcuts ---------------- */
+document.addEventListener('keydown', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  const map = {ArrowUp:'UP', ArrowDown:'DOWN', ArrowLeft:'LEFT', ArrowRight:'RIGHT',
+               Enter:'OK', Escape:'BACK', h:'HOME', m:'MENU'};
+  if (map[e.key]) { call('k=' + map[e.key]); e.preventDefault(); }
+});
+
+/* ---------------- boot ---------------- */
+showTab(localStorage.getItem('tab') || 'remote', false);
+if (localStorage.getItem('statsLive') === '1') setLive(true);
+</script>
+</body>
+</html>

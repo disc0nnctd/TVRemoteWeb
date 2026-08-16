@@ -1,0 +1,10 @@
+*.zip
+*.keystore
+*.pk8
+*.pem
+key*
+build/
+out/
+__pycache__/
+*.pyc
+*.idsig
