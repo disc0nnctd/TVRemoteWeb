@@ -465,6 +465,7 @@
         <button id="ks-calculate" class="acc2" style="width:100%" disabled>Calculate reviewed fit</button>
       </div>
       <div class="ks-legend"><span><i style="background:#42d77d"></i>Physical screen</span><span><i style="background:#4c9dff"></i>Projected image</span><span>Drag nodes by touch</span></div>
+      <button id="ks-edit-points" class="ghost" style="width:100%;margin-top:8px" hidden>Edit detected points</button>
       <div class="ks-status" id="ks-status" role="status" aria-live="polite">Loading projector keystone state…</div>
     </div>
 
@@ -1110,7 +1111,7 @@ document.getElementById('show-logcat').addEventListener('click', async () => {
 
 /* ---------------- keystone lab ---------------- */
 let keystoneLoaded = false;
-let ksCurrent = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
+let ksCurrent = null, ksPhotoBase = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
 let ksLayer = 'screen', ksDragging = null;
 let ksReviewed = {screen:new Set(), projection:new Set()};
 let ksAutoMode = false, ksAutoPreparePromise = null;
@@ -1124,6 +1125,7 @@ const ksApply = document.getElementById('ks-apply');
 const ksRestore = document.getElementById('ks-restore');
 const ksCalculate = document.getElementById('ks-calculate');
 const ksDetect = document.getElementById('ks-detect');
+const ksEditPoints = document.getElementById('ks-edit-points');
 
 function ksInvalidateProposal(message, kind) {
   ksProposal = null;
@@ -1182,6 +1184,8 @@ async function loadKeystonePhoto(event) {
   if (!file) return;
   if (!/^image\//.test(file.type)) { ksSetStatus('Choose a supported image.', 'err'); return; }
   if (ksImageUrl) URL.revokeObjectURL(ksImageUrl);
+  ksPhotoBase = null;
+  ksEditPoints.hidden = true;
   ksImageUrl = URL.createObjectURL(file);
   const image = new Image();
   image.onload = async () => {
@@ -1216,6 +1220,11 @@ function showManualAlignment(show) {
 
 document.getElementById('ks-manual-toggle').addEventListener('click', () => {
   showManualAlignment(document.getElementById('ks-manual-toggle').getAttribute('aria-expanded') !== 'true');
+});
+
+ksEditPoints.addEventListener('click', () => {
+  showManualAlignment(true);
+  ksSetStatus('Edit either outline. Each saved corner recalculates the proposal automatically.', 'ok');
 });
 
 async function prepareAutoAlignment() {
@@ -1317,11 +1326,15 @@ function resetManualPoints() {
 function updateKeystoneProposal(successMessage) {
   try {
     if (!ksCurrent) throw new Error('projector state is not loaded');
+    if (!ksPhotoBase) throw new Error('photo calibration reference is not loaded');
     if (ksReviewed.screen.size !== 4 || ksReviewed.projection.size !== 4) {
       throw new Error('review all four green and all four blue corners first');
     }
     ksAnnotation = KeystoneGeometry.parseAnnotation(annotationObject(ksAnnotation));
-    ksProposal = KeystoneGeometry.solveInsets(ksAnnotation, ksCurrent);
+    // Always solve against the correction that produced the photographed blue
+    // rectangle. After Apply, ksCurrent changes but this photo reference must
+    // remain fixed so the same image can be edited and applied repeatedly.
+    ksProposal = KeystoneGeometry.solveInsets(ksAnnotation, ksPhotoBase);
     document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
     document.getElementById('ks-proposed').textContent = ksFmt(ksProposal);
     ksValues.classList.add('on'); ksApply.disabled = false;
@@ -1379,8 +1392,11 @@ function finishPointDrag(event) {
   ksReviewed[reviewed.layer].add(reviewed.index);
   drawKeystoneOverlay();
   const green = ksReviewed.screen.size, blue = ksReviewed.projection.size;
-  ksInvalidateProposal('Corner saved. Reviewed: green ' + green + '/4 · blue ' + blue + '/4' +
-    (green === 4 && blue === 4 ? '. Tap Calculate reviewed fit.' : '.'));
+  if (green === 4 && blue === 4) {
+    updateKeystoneProposal('Edited fit ready. Review the proposed values, then apply correction again.');
+  } else {
+    ksInvalidateProposal('Corner saved. Reviewed: green ' + green + '/4 · blue ' + blue + '/4.');
+  }
 }
 ksCanvas.addEventListener('pointerup', finishPointDrag);
 ksCanvas.addEventListener('pointercancel', finishPointDrag);
@@ -1390,6 +1406,9 @@ ksCalculate.addEventListener('click', () => updateKeystoneProposal('Fit calculat
 
 ksDetect.addEventListener('click', () => {
   if (!ksImage || !ksAnnotation) return;
+  if (!ksPhotoBase && ksCurrent) {
+    ksPhotoBase = Object.fromEntries(KeystoneGeometry.CORNERS.map(name => [name, [...ksCurrent[name]]]));
+  }
   const autoRun = ksAutoMode;
   ksDetect.disabled = true;
   ksSetStatus('Detecting the blue projection on this phone…');
@@ -1412,6 +1431,7 @@ ksDetect.addEventListener('click', () => {
         ksReviewed.screen = new Set([0,1,2,3]);
       } catch (error) { screenError = error.message; }
       drawKeystoneOverlay();
+      ksEditPoints.hidden = false;
       if (screenDetected) {
         if (autoRun) {
           updateKeystoneProposal('Auto alignment ready: blue ' + Math.round(detected.confidence * 100) +
@@ -1444,7 +1464,8 @@ ksApply.addEventListener('click', async () => {
     const result = await ksRequest('apply', {values:KeystoneGeometry.firmwareCsv(ksProposal), confirmation:'APPLY'});
     ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null;
     document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
-    ksSetStatus('Correction applied. Use Restore previous if the projection is worse.', 'ok');
+    document.getElementById('ks-proposed').textContent = '—';
+    ksSetStatus('Correction applied. Tap Edit detected points to refine this photo and apply again, or Restore previous to undo.', 'ok');
   } catch (error) { ksApply.disabled = false; ksSetStatus('Apply failed: ' + error.message, 'err'); }
 });
 
