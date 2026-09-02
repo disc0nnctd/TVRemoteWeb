@@ -1,6 +1,6 @@
 id=tvremoteweb
 name=TVRemoteWeb
-version=1.0.0-experimental
-versionCode=100
+version=1.1.0
+versionCode=110
 author=disc0nnctd
-description=Experimental branch: phone remote, mouse drag, advanced Beem picture controls, monitoring, and reviewable calibration.
+description=Phone remote, mouse drag, picture profiles, monitoring, and photo-assisted projector alignment.

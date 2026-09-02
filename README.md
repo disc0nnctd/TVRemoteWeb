@@ -8,10 +8,9 @@ real mouse touchpad, an app launcher, and a system monitor.
 The whole server is BusyBox `httpd` plus a handful of shell CGI scripts, so the
 resident footprint is well under a megabyte.
 
-The experimental [Hermes projector agent](agent/README.md) adds scoped wireless
+The optional [Hermes projector agent](agent/README.md) adds scoped wireless
 configuration plus review-before-apply photo keystone and picture tuning for
-the Beem 470 reference device. Stable releases remain on the v1 line; ongoing
-features live on the `experimental` branch.
+the Beem 470 reference device.
 
 ```
         phone browser  ──HTTP──▶  busybox httpd  ──▶  shell CGI  ──▶  input / am / pm
@@ -44,10 +43,10 @@ pairing dance. This is a web page served by the box itself.
 - **Advanced settings** — timeout (including practical Never), screensaver,
   stay-awake, rotation, animation speed, and the Beem's 13-channel hardware
   picture profile with staged apply and rollback
-- **Keystone Lab** — place and drag screen/projection corner nodes directly over
-  a phone photo, or seed them with a strict ChatGPT annotation prompt; calculate
-  from live projector state, preview, apply, and roll back; reset to the full
-  native image or set a centered 50–100% digital image size
+- **Keystone Lab** — automatically detect the physical screen and projected
+  image from a phone photo, refine either set of corners with draggable nodes,
+  preview, apply, re-edit, and roll back; its simple default flow starts at a
+  centered 55% image while the full manual alignment controls stay available
 - **QR tile on the home screen** — a tiny bundled launcher app that shows a QR
   of the current address, regenerated on every open so it survives DHCP changes
 
