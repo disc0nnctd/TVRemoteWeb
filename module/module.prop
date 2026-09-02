@@ -1,6 +1,6 @@
 id=tvremoteweb
 name=TVRemoteWeb
-version=1.0.0
-versionCode=100
+version=1.1.0
+versionCode=110
 author=disc0nnctd
-description=Drive your Android TV box from any phone browser on the LAN. D-pad, real mouse touchpad, app launcher, system monitor. No app to install on the phone.
+description=Phone remote, mouse drag, picture profiles, monitoring, and photo-assisted projector alignment.
