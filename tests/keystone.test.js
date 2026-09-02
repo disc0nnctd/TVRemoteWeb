@@ -75,3 +75,46 @@ test('projection detection rejects a photo without the blue calibration signal',
   const rgba = new Uint8ClampedArray(64 * 64 * 4).fill(90);
   assert.throws(() => k.detectProjectionEdges(rgba, 64, 64), /blue correction projection was not found/);
 });
+
+test('detects a dark physical screen frame enclosing the projection', () => {
+  const width = 260, height = 190;
+  const rgba = new Uint8ClampedArray(width * height * 4);
+  const screen = [[20,18],[238,28],[228,174],[12,162]];
+  const projection = [[52,48],[207,55],[200,142],[45,135]];
+  const inside = (quad, x, y) => {
+    let sign = 0;
+    for (let i = 0; i < 4; i++) {
+      const a=quad[i], b=quad[(i+1)%4], cross=(b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]);
+      if (Math.abs(cross) < 1e-6) continue;
+      if (sign && Math.sign(cross) !== sign) return false;
+      sign = Math.sign(cross);
+    }
+    return true;
+  };
+  const segmentDistance = (p, a, b) => {
+    const dx=b[0]-a[0], dy=b[1]-a[1];
+    const t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));
+    return Math.hypot(p[0]-(a[0]+t*dx),p[1]-(a[1]+t*dy));
+  };
+  for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
+    const offset=(y*width+x)*4;
+    let value=inside(screen,x,y)?225:175;
+    if (screen.some((a,i)=>segmentDistance([x,y],a,screen[(i+1)%4])<3.2)) value=22;
+    rgba[offset]=rgba[offset+1]=rgba[offset+2]=value;
+    if (inside(projection,x,y)) { rgba[offset]=25; rgba[offset+1]=150; rgba[offset+2]=235; }
+    rgba[offset+3]=255;
+  }
+  const found=k.detectScreenEdges(rgba,width,height,projection.map(([x,y])=>[x/width,y/height]));
+  screen.forEach((point,index)=>{
+    assert.ok(Math.abs(found.screen[index][0]-point[0]/width)<.06);
+    assert.ok(Math.abs(found.screen[index][1]-point[1]/height)<.06);
+  });
+  assert.ok(found.confidence>=.3);
+});
+
+test('screen detection falls back when no enclosing frame is visible', () => {
+  const width=160,height=120,rgba=new Uint8ClampedArray(width*height*4);
+  for(let i=0;i<rgba.length;i+=4) rgba[i]=rgba[i+1]=rgba[i+2]=190,rgba[i+3]=255;
+  const projection=[[.25,.25],[.75,.25],[.75,.75],[.25,.75]];
+  assert.throws(()=>k.detectScreenEdges(rgba,width,height,projection),/no continuous physical screen frame found/);
+});

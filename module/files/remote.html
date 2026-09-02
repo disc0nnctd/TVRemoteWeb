@@ -439,7 +439,7 @@
 
     <div class="card">
       <div class="ks-step"><span class="ks-num">2</span><div class="ks-title">Adjust points or paste JSON</div></div>
-      <p class="ks-copy">Auto-detect finds the blue projected image in the phone browser. A physical screen is optional: place the four green points manually when no reliable frame exists.</p>
+      <p class="ks-copy">Auto-detect finds the blue projection, then looks for a larger enclosing screen frame. If no reliable frame exists, place the four green target points manually.</p>
       <div class="ks-layer" role="group" aria-label="Editable keystone outline">
         <button data-ks-layer="screen" class="on">Edit physical screen</button>
         <button data-ks-layer="projection">Edit projection</button>
@@ -450,7 +450,7 @@
         <textarea id="ks-json" spellcheck="false" autocomplete="off" placeholder='{"coordinate_space":1000,"screen":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]},"projection":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]}}'></textarea>
       </details>
       <div class="ks-actions" style="margin-top:8px">
-        <button id="ks-detect" class="acc" disabled>Detect blue projection</button>
+        <button id="ks-detect" class="acc" disabled>Detect both outlines</button>
         <button id="ks-reset-points" class="ghost">Reset manual points</button>
       </div>
       <label class="ks-lens"><input id="ks-lens" type="checkbox" checked> Precision lens while dragging</label>
@@ -1390,11 +1390,21 @@ ksDetect.addEventListener('click', () => {
       const detected = KeystoneGeometry.detectProjectionEdges(pixels.data, work.width, work.height);
       ksAnnotation.projection = detected.projection;
       ksReviewed.projection = new Set([0,1,2,3]);
+      let screenDetected = null, screenError = '';
+      try {
+        screenDetected = KeystoneGeometry.detectScreenEdges(pixels.data, work.width, work.height, detected.projection);
+        ksAnnotation.screen = screenDetected.screen;
+        ksReviewed.screen = new Set([0,1,2,3]);
+      } catch (error) { screenError = error.message; }
       ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
       drawKeystoneOverlay();
-      const green = ksReviewed.screen.size;
-      ksInvalidateProposal('Blue projection detected (' + Math.round(detected.confidence * 100) +
-        '% confidence). Now place/review the four green target corners' + (green ? ' (' + green + '/4 done).' : '.'));
+      if (screenDetected) {
+        ksInvalidateProposal('Both outlines detected: blue ' + Math.round(detected.confidence * 100) +
+          '% · green ' + Math.round(screenDetected.confidence * 100) + '%. Inspect every corner, then tap Calculate reviewed fit.', 'ok');
+      } else {
+        ksInvalidateProposal('Blue projection detected (' + Math.round(detected.confidence * 100) +
+          '%). Physical screen was not accepted (' + screenError + '). Place the four green target corners manually.');
+      }
     } catch (error) {
       ksInvalidateProposal('Auto-detect could not finish: ' + error.message, 'err');
     } finally {

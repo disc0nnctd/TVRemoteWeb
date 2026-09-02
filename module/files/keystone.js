@@ -250,5 +250,111 @@
     return {projection: projection.map(pair => pair.map(v => Math.max(0, Math.min(1, v)))), confidence};
   }
 
-  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, chatGptPrompt, detectProjectionEdges };
+  function polygonArea(quad) {
+    let area = 0;
+    for (let i = 0; i < 4; i++) {
+      const a = quad[i], b = quad[(i + 1) % 4];
+      area += a[0] * b[1] - b[0] * a[1];
+    }
+    return Math.abs(area) / 2;
+  }
+
+  function containsPoint(quad, point) {
+    let sign = 0;
+    for (let i = 0; i < 4; i++) {
+      const a = quad[i], b = quad[(i + 1) % 4];
+      const cross = (b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0]);
+      if (Math.abs(cross) < 1e-7) continue;
+      if (sign && Math.sign(cross) !== sign) return false;
+      sign = Math.sign(cross);
+    }
+    return true;
+  }
+
+  function detectScreenEdges(rgba, width, height, projection) {
+    if (!rgba || rgba.length !== width * height * 4 || width < 64 || height < 64) fail('invalid image pixels');
+    validateQuad(projection, 'projection');
+    const luma = new Uint8Array(width * height);
+    for (let i = 0, p = 0; i < luma.length; i++, p += 4) {
+      luma[i] = Math.round(rgba[p] * .299 + rgba[p + 1] * .587 + rgba[p + 2] * .114);
+    }
+    const sample = (x, y) => {
+      const ix = Math.round(x), iy = Math.round(y);
+      if (ix < 0 || iy < 0 || ix >= width || iy >= height) return null;
+      return luma[iy * width + ix];
+    };
+    const projected = projection.map(([x, y]) => [x * width, y * height]);
+    const center = projected.reduce((sum, p) => [sum[0] + p[0] / 4, sum[1] + p[1] / 4], [0, 0]);
+    const lines = [], qualities = [];
+    for (let side = 0; side < 4; side++) {
+      const a = projected[side], b = projected[(side + 1) % 4];
+      const dx = b[0] - a[0], dy = b[1] - a[1], length = Math.hypot(dx, dy);
+      const direction = [dx / length, dy / length];
+      const midpoint = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      let normal = [direction[1], -direction[0]];
+      if (normal[0] * (midpoint[0] - center[0]) + normal[1] * (midpoint[1] - center[1]) < 0) {
+        normal = [-normal[0], -normal[1]];
+      }
+      let boundaryDistance = Infinity;
+      if (normal[0] > .001) boundaryDistance = Math.min(boundaryDistance, (width - 1 - midpoint[0]) / normal[0]);
+      if (normal[0] < -.001) boundaryDistance = Math.min(boundaryDistance, -midpoint[0] / normal[0]);
+      if (normal[1] > .001) boundaryDistance = Math.min(boundaryDistance, (height - 1 - midpoint[1]) / normal[1]);
+      if (normal[1] < -.001) boundaryDistance = Math.min(boundaryDistance, -midpoint[1] / normal[1]);
+      const minDistance = Math.max(7, length * .035);
+      const maxDistance = Math.min(boundaryDistance * .88, length * .8);
+      if (!(maxDistance > minDistance * 1.5)) fail('not enough room around the projection to detect a screen frame');
+      let best = null;
+      for (let angle = -18; angle <= 18; angle += 3) {
+        const radians = angle * Math.PI / 180, cosine = Math.cos(radians), sine = Math.sin(radians);
+        const lineDirection = [direction[0] * cosine - direction[1] * sine, direction[0] * sine + direction[1] * cosine];
+        let lineNormal = [lineDirection[1], -lineDirection[0]];
+        if (lineNormal[0] * normal[0] + lineNormal[1] * normal[1] < 0) lineNormal = [-lineNormal[0], -lineNormal[1]];
+        const step = Math.max(2, Math.round((maxDistance - minDistance) / 60));
+        for (let distance = minDistance; distance <= maxDistance; distance += step) {
+          const lineCenter = [midpoint[0] + normal[0] * distance, midpoint[1] + normal[1] * distance];
+          const count = Math.max(36, Math.round(length / 4));
+          let score = 0, continuous = 0, valid = 0;
+          for (let j = 0; j < count; j++) {
+            const along = ((j / (count - 1)) - .5) * length * .92;
+            const x = lineCenter[0] + lineDirection[0] * along;
+            const y = lineCenter[1] + lineDirection[1] * along;
+            const middle = sample(x, y);
+            const inside = sample(x - lineNormal[0] * 4, y - lineNormal[1] * 4);
+            const outside = sample(x + lineNormal[0] * 4, y + lineNormal[1] * 4);
+            if (middle === null || inside === null || outside === null) continue;
+            valid++;
+            const gradient = Math.abs(outside - inside);
+            const darkness = (255 - middle) / 255;
+            score += Math.min(gradient / 70, 1) * .68 + darkness * .32;
+            if (gradient >= 16 || middle <= 80) continuous++;
+          }
+          if (valid < count * .82) continue;
+          const continuity = continuous / valid;
+          const quality = (score / valid) * (.55 + .45 * continuity);
+          if (!best || quality > best.quality) best = {center:lineCenter, direction:lineDirection, quality, continuity};
+        }
+      }
+      if (!best || best.quality < .25 || best.continuity < .28) fail('no continuous physical screen frame found');
+      lines.push(best); qualities.push(best.quality);
+    }
+    function intersect(a, b) {
+      const cross = a.direction[0] * b.direction[1] - a.direction[1] * b.direction[0];
+      if (Math.abs(cross) < .05) fail('detected screen edges do not form stable corners');
+      const delta = [b.center[0] - a.center[0], b.center[1] - a.center[1]];
+      const t = (delta[0] * b.direction[1] - delta[1] * b.direction[0]) / cross;
+      return [a.center[0] + t * a.direction[0], a.center[1] + t * a.direction[1]];
+    }
+    const screenPixels = [intersect(lines[3], lines[0]), intersect(lines[0], lines[1]),
+                          intersect(lines[1], lines[2]), intersect(lines[2], lines[3])];
+    const screen = screenPixels.map(([x, y]) => [x / width, y / height]);
+    validateQuad(screen, 'detected screen');
+    if (screen.some(pair => pair.some(v => v < -.025 || v > 1.025))) fail('physical screen corners extend outside the photo');
+    if (!projection.every(point => containsPoint(screen, point))) fail('detected frame does not enclose the projected image');
+    const ratio = polygonArea(screen) / polygonArea(projection);
+    if (ratio < 1.08 || ratio > 7) fail('detected frame has an implausible size');
+    const confidence = Math.max(.3, Math.min(.95, qualities.reduce((a, b) => a + b, 0) / 4));
+    return {screen:screen.map(pair => pair.map(v => Math.max(0, Math.min(1, v)))), confidence};
+  }
+
+  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, chatGptPrompt, detectProjectionEdges, detectScreenEdges };
 });
