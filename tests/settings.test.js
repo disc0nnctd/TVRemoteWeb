@@ -25,6 +25,7 @@ test('remote separates three locked defaults from three editable custom slots', 
     assert.match(html, new RegExp('data-pq-profile="' + name + '"'));
   }
   assert.match(html, /Locked defaults/);
-  assert.match(html, /Editable custom profiles/);
+  assert.match(html, /<summary>Save as custom…<\/summary>/);
+  assert.match(html, /id="pq-custom-picker"/);
   assert.match(html, /id="pq-save-custom"/);
 });

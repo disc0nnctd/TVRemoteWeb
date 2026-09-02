@@ -174,6 +174,12 @@
   .pq-profile-state { margin:-2px 2px 10px; color:#b9d8ff; font-size:10px; }
   .pq-group-label { margin:2px 2px 7px; color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
   .pq-custom-label { margin-top:11px; }
+  .pq-custom-picker { margin:2px 0 10px; border:1px solid var(--line); border-radius:10px; background:var(--sunk); }
+  .pq-custom-picker summary { min-height:44px; display:flex; align-items:center; padding:0 12px; color:#b9d8ff; font-size:12px; font-weight:700; cursor:pointer; list-style:none; }
+  .pq-custom-picker summary::-webkit-details-marker { display:none; }
+  .pq-custom-picker summary::after { content:'+'; margin-left:auto; font-size:18px; color:var(--muted); }
+  .pq-custom-picker[open] summary::after { content:'−'; }
+  .pq-custom-picker-body { padding:0 9px 9px; }
   #picture-settings.locked .setting { opacity:.58; }
   #picture-settings.locked input, #picture-settings.locked select { cursor:not-allowed; }
   #pq-save-custom { width:100%; min-height:44px; margin:0 0 10px; }
@@ -499,20 +505,25 @@
   <section class="tabpane" data-tab="tools">
     <div class="card">
       <div class="sec">Picture controls <span class="note">— Beem hardware PQ</span></div>
-      <p class="advanced-note">Locked defaults cannot be altered. Select Custom 1–3 to edit and save your own projector-wide profile. Selecting or saving a profile does not apply it.</p>
+      <p class="advanced-note">Locked defaults cannot be altered. Use Save as custom to copy one into an editable projector-wide profile. Selecting or saving a profile does not apply it.</p>
       <div class="pq-group-label">Locked defaults</div>
       <div class="pq-profiles" role="group" aria-label="Display picture profiles">
         <button class="pq-profile" data-pq-profile="safe" aria-pressed="false"><strong>Safe enhancement</strong><small>Locked · color + detail</small></button>
         <button class="pq-profile" data-pq-profile="balanced" aria-pressed="false"><strong>Daylight balanced</strong><small>Locked · recommended</small></button>
         <button class="pq-profile" data-pq-profile="strong" aria-pressed="false"><strong>Strong daylight</strong><small>Locked · maximum clarity</small></button>
-      </div>
-      <div class="pq-group-label pq-custom-label">Editable custom profiles</div>
-      <div class="pq-profiles" role="group" aria-label="Custom display picture profiles">
-        <button class="pq-profile" data-pq-profile="custom1" aria-pressed="false"><strong>Custom 1</strong><small>Editable · projector-saved</small></button>
-        <button class="pq-profile" data-pq-profile="custom2" aria-pressed="false"><strong>Custom 2</strong><small>Editable · projector-saved</small></button>
-        <button class="pq-profile" data-pq-profile="custom3" aria-pressed="false"><strong>Custom 3</strong><small>Editable · projector-saved</small></button>
         <button class="pq-profile" data-pq-profile="current" aria-pressed="false"><strong>Current values</strong><small>Read-only · discard edits</small></button>
       </div>
+      <details class="pq-custom-picker" id="pq-custom-picker">
+        <summary>Save as custom…</summary>
+        <div class="pq-custom-picker-body">
+          <p class="advanced-note">Choose a slot. Empty slots copy the profile currently shown; saved slots reopen their own values.</p>
+          <div class="pq-profiles" role="group" aria-label="Custom display picture profiles">
+            <button class="pq-profile" data-pq-profile="custom1" aria-pressed="false"><strong>Custom 1</strong><small data-pq-slot-state="custom1">Empty · copy current selection</small></button>
+            <button class="pq-profile" data-pq-profile="custom2" aria-pressed="false"><strong>Custom 2</strong><small data-pq-slot-state="custom2">Empty · copy current selection</small></button>
+            <button class="pq-profile" data-pq-profile="custom3" aria-pressed="false"><strong>Custom 3</strong><small data-pq-slot-state="custom3">Empty · copy current selection</small></button>
+          </div>
+        </div>
+      </details>
       <div class="pq-profile-state" id="pq-profile-state">Current projector values</div>
       <button id="pq-save-custom" class="ghost" hidden disabled>Save custom profile</button>
       <p class="advanced-note">Enable live preview to see individual manual changes after a short pause. The first live change saves one rollback snapshot.</p>
@@ -913,6 +924,13 @@ function updatePictureOutputs() {
   });
 }
 
+function updateCustomProfileLabels(profiles) {
+  ['custom1','custom2','custom3'].forEach(name => {
+    const label = document.querySelector('[data-pq-slot-state="' + name + '"]');
+    if (label) label.textContent = profiles && profiles[name] ? 'Saved · tap to edit' : 'Empty · copy current selection';
+  });
+}
+
 function markPictureProfile(name, label) {
   activePictureProfile = name;
   pqProfileButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pqProfile === name)));
@@ -972,6 +990,7 @@ function renderSettings(result) {
     if (picture[input.dataset.pq] !== undefined) input.value = String(picture[input.dataset.pq]);
   });
   updatePictureOutputs();
+  updateCustomProfileLabels(result.custom_profiles);
   markPictureProfile('current', 'Current projector values');
   setPictureControlsLocked(true);
   document.getElementById('pq-apply').disabled = !result.picture_supported;
@@ -997,30 +1016,29 @@ pqInputs.filter(input => input.type === 'range').forEach(input => {
 pqProfileButtons.forEach(button => button.addEventListener('click', () => {
   const baseline = settingsSnapshot && settingsSnapshot.picture;
   if (!baseline) { setSettingsStatus('Open Tools and wait for the current picture values to load.', 'err'); return; }
-  pqInputs.forEach(input => {
-    if (baseline[input.dataset.pq] !== undefined) input.value = String(baseline[input.dataset.pq]);
-  });
   const name = button.dataset.pqProfile;
+  const customSaved = name.startsWith('custom') && settingsSnapshot.custom_profiles && settingsSnapshot.custom_profiles[name];
   if (pqLiveTimer) { clearTimeout(pqLiveTimer); pqLiveTimer = null; }
+  if (!name.startsWith('custom') || customSaved) {
+    const source = customSaved || baseline;
+    pqInputs.forEach(input => {
+      if (source[input.dataset.pq] !== undefined) input.value = String(source[input.dataset.pq]);
+    });
+  }
   if (pqProfiles[name]) {
     Object.entries(pqProfiles[name].values).forEach(([key, value]) => {
       const input = document.querySelector('[data-pq="' + key + '"]');
       if (input) input.value = String(value);
     });
-  } else if (name.startsWith('custom')) {
-    const saved = settingsSnapshot.custom_profiles && settingsSnapshot.custom_profiles[name];
-    if (saved) pqInputs.forEach(input => {
-      if (saved[input.dataset.pq] !== undefined) input.value = String(saved[input.dataset.pq]);
-    });
   }
   updatePictureOutputs();
   const customNumber = name.startsWith('custom') ? name.replace('custom', '') : '';
-  const customSaved = customNumber && settingsSnapshot.custom_profiles && settingsSnapshot.custom_profiles[name];
   const label = name === 'current' ? 'Current projector values · read-only' :
     customNumber ? 'Custom ' + customNumber + (customSaved ? ' · saved and editable' : ' · empty, initialized from current values') :
     pqProfiles[name].label + ' · locked default';
   markPictureProfile(name, label);
   setPictureControlsLocked(!customNumber);
+  if (customNumber) document.getElementById('pq-custom-picker').open = false;
   setSettingsStatus(name === 'current' ? 'Staged edits discarded.' : label + (customNumber ? '. Edit sliders, Save the slot, or Apply picture.' : '. Tap Apply picture when ready.'), 'ok');
 }));
 
@@ -1033,6 +1051,7 @@ document.getElementById('pq-save-custom').addEventListener('click', async () => 
   try {
     const result = await settingsRequest('picture_profile_save', {...values, slot:activePictureProfile, confirmation:'SAVE'}, 'POST');
     settingsSnapshot.custom_profiles = result.custom_profiles || {};
+    updateCustomProfileLabels(settingsSnapshot.custom_profiles);
     const number = activePictureProfile.replace('custom', '');
     markPictureProfile(activePictureProfile, 'Custom ' + number + ' · saved and editable');
     setPictureControlsLocked(false);
