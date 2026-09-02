@@ -8,6 +8,11 @@ real mouse touchpad, an app launcher, and a system monitor.
 The whole server is BusyBox `httpd` plus a handful of shell CGI scripts, so the
 resident footprint is well under a megabyte.
 
+The experimental [Hermes projector agent](agent/README.md) adds scoped wireless
+configuration plus review-before-apply photo keystone and picture tuning for
+the Beem 470 reference device. Stable releases remain on the v1 line; ongoing
+features live on the `experimental` branch.
+
 ```
         phone browser  ──HTTP──▶  busybox httpd  ──▶  shell CGI  ──▶  input / am / pm
                        ──WS────▶  mousedaemon    ──▶  /dev/input/eventN
@@ -27,6 +32,8 @@ pairing dance. This is a web page served by the box itself.
   versus ~80 ms for the shell-out path it replaced, which is the difference
   between a usable cursor and an unusable one.
 - **Text input** — type on the phone keyboard instead of hunting an on-screen grid
+- **Persistent keyboard shortcut** — open text input from any remote tab
+- **Latched mouse Hold/Release** — drag Android objects with the real pointer
 - **App launcher** — enumerated live from the device; long-press to pin favourites
 - **Send a URL to the TV** — paste a link, it opens in the app you choose
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
@@ -34,6 +41,13 @@ pairing dance. This is a web page served by the box itself.
 - **Process manager** — top processes by CPU, with a kill button
 - **Maintenance** — trim caches, drop page cache, cycle Wi-Fi, restart services,
   tail logcat
+- **Advanced settings** — timeout (including practical Never), screensaver,
+  stay-awake, rotation, animation speed, and the Beem's 13-channel hardware
+  picture profile with staged apply and rollback
+- **Keystone Lab** — place and drag screen/projection corner nodes directly over
+  a phone photo, or seed them with a strict ChatGPT annotation prompt; calculate
+  from live projector state, preview, apply, and roll back; reset to the full
+  native image or set a centered 50–100% digital image size
 - **QR tile on the home screen** — a tiny bundled launcher app that shows a QR
   of the current address, regenerated on every open so it survives DHCP changes
 
@@ -121,6 +135,9 @@ src/mousedaemon/build.sh          # needs arm/aarch64 gcc cross-compilers
 # QR tile APK — hand-written smali, assembled by apktool
 src/app/build.sh                  # needs apktool, zipalign, apksigner, JDK
 
+# Beem Allwinner picture-control bridge
+tools/build-pqcli.sh              # needs smali
+
 # package the module
 tools/make-module-zip.sh
 ```
@@ -141,11 +158,13 @@ module/                 Magisk module (this is what gets zipped)
   service.sh            boot: start httpd + mousedaemon, publish the URL
   files/
     remote.html         the entire phone UI, one file
+    keystone.js         photo-coordinate validation and projective transform
+    pqcli.dex            minimal bridge to the Beem vendor picture service
     qrcode.js           QR rendering (MIT, Kazuhiko Arase)
     cgi-bin/*.cgi       remote / stats / apps / qr endpoints
     bin/mousedaemon-*   static per-ABI pointer daemons
     app/*.apk           bundled QR launcher tile
-src/                    sources for both binaries
+src/                    sources for native, APK, and picture-control helpers
 tools/                  packaging
 ```
 

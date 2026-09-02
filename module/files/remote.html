@@ -35,6 +35,10 @@
   body[data-ws="off"] .wsdot { background:#ff6b6b; box-shadow:0 0 8px #ff6b6b; }
   .status { font-size:10px; color:var(--muted); max-width:42vw; overflow:hidden;
             text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+  .header-action { flex:0 0 44px; width:44px; height:44px; padding:10px; border:1px solid var(--line);
+                   background:#171c23; display:grid; place-items:center; }
+  .header-action svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8;
+                       stroke-linecap:round; stroke-linejoin:round; }
 
   /* ---------- layout ---------- */
   .wrap { max-width:560px; margin:0 auto; padding:12px 12px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom,0px)); }
@@ -58,6 +62,7 @@
     touch-action:manipulation; font-family:inherit;
   }
   button:active { transform:scale(.95); background:#2c3542; }
+  button:disabled { opacity:.42; cursor:not-allowed; transform:none; }
   button.acc  { background:var(--acc);  color:#fff; }
   button.acc2 { background:var(--acc2); color:#fff; }
   button.ghost{ background:transparent; border:1px solid var(--line); color:var(--muted); }
@@ -91,7 +96,9 @@
   .pad .cursor { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px;
                  border-radius:50%; background:var(--acc); box-shadow:0 0 12px var(--acc);
                  transition:opacity .2s; pointer-events:none; }
-  .padrow { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px; }
+  .padrow { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:8px; }
+  .padrow button { padding-left:5px; padding-right:5px; font-size:12px; min-height:44px; }
+  #hold.on { background:var(--acc2); color:#fff; box-shadow:inset 0 0 0 2px rgba(255,255,255,.28); }
   .sensor { display:flex; align-items:center; gap:10px; margin-top:10px; }
   .sensor input[type=range] { flex:1; accent-color:var(--acc); }
   .sensor label { font-size:11px; color:var(--muted); min-width:38px; }
@@ -138,6 +145,73 @@
             color:#c9d1d9; white-space:pre-wrap; word-break:break-all;
             font-family:ui-monospace,monospace; }
 
+  /* ---------- advanced settings ---------- */
+  .setting-list { display:flex; flex-direction:column; gap:10px; }
+  .setting { padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--sunk); }
+  .setting-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+  .setting-head label, .setting-head strong { font-size:12px; font-weight:650; }
+  .setting-head output { color:#b9d8ff; font:600 12px ui-monospace,monospace; }
+  .setting small { display:block; color:var(--muted); font-size:10.5px; line-height:1.4; margin-top:6px; }
+  .setting input[type=range] { width:100%; min-height:32px; accent-color:var(--acc); cursor:pointer; }
+  .setting select { width:100%; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:9px;
+                    background:#20262e; color:var(--txt); font:inherit; cursor:pointer; }
+  .settings-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .settings-actions button { min-height:44px; min-width:0; }
+  .settings-status { margin-top:10px; padding:9px 10px; border:1px solid var(--line); border-radius:9px;
+                     color:var(--muted); background:var(--sunk); font-size:10.5px; line-height:1.4; }
+  .settings-status.ok { color:#8edba5; border-color:#275c3a; }
+  .settings-status.err { color:#ff9b9b; border-color:#683239; }
+  .advanced-note { margin:0 2px 10px; color:var(--muted); font-size:10.5px; line-height:1.45; }
+
+  /* ---------- keystone lab ---------- */
+  .ks-step { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .ks-num { width:25px; height:25px; border-radius:8px; display:grid; place-items:center;
+            background:#223249; color:#9dccff; font:700 12px ui-monospace,monospace; flex:none; }
+  .ks-title { font-size:13px; font-weight:700; }
+  .ks-copy { font-size:11px; color:var(--muted); line-height:1.45; margin:0 2px 10px; }
+  .ks-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .ks-actions button, .file-btn { min-height:44px; min-width:0; padding-left:6px; padding-right:6px; font-size:12px; }
+  .file-btn { display:flex; align-items:center; justify-content:center; padding:10px;
+              border-radius:10px; background:#20262e; color:var(--txt); font-size:13px;
+              font-weight:600; cursor:pointer; transition:background .2s; text-align:center; }
+  .file-btn:active { background:#2c3542; }
+  .visually-hidden { position:absolute!important; width:1px!important; height:1px!important;
+                     padding:0!important; margin:-1px!important; overflow:hidden!important;
+                     clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+  textarea { width:100%; min-height:172px; resize:vertical; padding:12px; border-radius:10px;
+             border:1px solid var(--line); background:var(--sunk); color:var(--txt);
+             font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+  textarea:focus { outline:2px solid transparent; border-color:var(--acc); box-shadow:0 0 0 2px rgba(76,157,255,.2); }
+  details.ks-prompt { margin-top:9px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  details.ks-prompt summary { min-height:44px; padding:12px; cursor:pointer; color:var(--muted); font-size:12px; }
+  details.ks-prompt textarea { display:block; border:0; border-top:1px solid var(--line); border-radius:0; min-height:220px; }
+  .ks-preview { margin-top:10px; background:#090b0e; border:1px solid var(--line); border-radius:11px;
+                overflow:hidden; min-height:120px; display:grid; place-items:center; }
+  .ks-preview canvas { display:block; width:100%; height:auto; }
+  .ks-preview canvas.editing { cursor:crosshair; touch-action:none; }
+  .ks-placeholder { color:var(--muted); font-size:11px; padding:30px 18px; text-align:center; }
+  .ks-legend { display:flex; gap:14px; flex-wrap:wrap; padding:9px 2px 0; font-size:10px; color:var(--muted); }
+  .ks-legend i { display:inline-block; width:10px; height:3px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  .ks-status { margin-top:10px; padding:10px; border-radius:9px; background:var(--sunk);
+               border:1px solid var(--line); font-size:11px; line-height:1.5; color:var(--muted); }
+  .ks-status.ok { border-color:#275c3a; color:#8edba5; }
+  .ks-status.err { border-color:#683239; color:#ff9b9b; }
+  .ks-values { display:none; margin-top:10px; grid-template-columns:auto 1fr; gap:6px 12px;
+               padding:10px; background:var(--sunk); border-radius:9px; font-size:11px; }
+  .ks-values.on { display:grid; }
+  .ks-values span:nth-child(odd) { color:var(--muted); }
+  .ks-values code { color:#b9d8ff; overflow-wrap:anywhere; }
+  .ks-danger-note { color:#ffb84c; font-size:10.5px; line-height:1.45; margin:9px 2px 0; }
+  .ks-zoom { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px;
+             margin:10px 2px; color:var(--muted); font-size:11px; }
+  .ks-zoom input { width:100%; accent-color:var(--acc); }
+  .ks-zoom output { min-width:38px; color:var(--txt); font-variant-numeric:tabular-nums; text-align:right; }
+  .ks-layer { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:9px; }
+  .ks-layer button { min-width:0; min-height:44px; padding:9px 6px; font-size:11px; }
+  .ks-layer button.on { box-shadow:inset 0 0 0 2px currentColor; }
+  .ks-layer [data-ks-layer="screen"].on { color:#8edba5; background:#183224; }
+  .ks-layer [data-ks-layer="projection"].on { color:#9dccff; background:#172c45; }
+
   /* ---------- bottom tab bar ---------- */
   nav {
     position:fixed; left:0; right:0; bottom:0; z-index:30;
@@ -156,6 +230,11 @@
   nav button .ic { font-size:19px; line-height:1; }
   nav button.on { color:var(--acc); }
   nav button.on .ic { transform:translateY(-1px); }
+  nav button .ic svg { width:20px; height:20px; display:block; fill:none; stroke:currentColor;
+                       stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  @media (prefers-reduced-motion:reduce) {
+    *, *::before, *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; }
+  }
 </style>
 </head>
 <body>
@@ -164,6 +243,9 @@
   <span class="wsdot" id="wsdot" title="mouse daemon link"></span>
   <h1>Beem470<span class="host" id="host"></span></h1>
   <span class="status" id="s"></span>
+  <button class="header-action" id="global-keyboard" aria-label="Open keyboard" title="Open keyboard">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h.01M11 9h.01M15 9h.01M18 9h.01M7 13h.01M11 13h.01M15 13h.01M18 13h.01M8 16h8"/></svg>
+  </button>
 </header>
 
 <div class="wrap">
@@ -234,6 +316,7 @@
         <button id="click">Click</button>
         <button id="dclick">Double</button>
         <button id="rclick">Right</button>
+        <button id="hold" aria-pressed="false">Hold</button>
         <button id="center" class="ghost">Center</button>
       </div>
     </div>
@@ -312,8 +395,118 @@
     </div>
   </section>
 
+  <!-- ================= KEYSTONE ALIGN ================= -->
+  <section class="tabpane" data-tab="align">
+    <div class="card">
+      <div class="sec">Quick display fit</div>
+      <p class="ks-copy">Set a centered image size, or remove all four-corner correction and return to the full native image.</p>
+      <label class="ks-zoom" for="ks-zoom">
+        <span>Image size</span>
+        <input id="ks-zoom" type="range" min="50" max="100" value="100" step="1">
+        <output id="ks-zoom-value" for="ks-zoom">100%</output>
+      </label>
+      <div class="ks-actions">
+        <button id="ks-zoom-apply" class="acc">Apply image size</button>
+        <button id="ks-reset" class="danger">Reset keystone + zoom</button>
+      </div>
+      <p class="ks-danger-note">These actions replace the current four-corner correction. Restore previous undoes the last change.</p>
+      <div class="ks-status" id="ks-quick-status" role="status" aria-live="polite">Loading projector keystone state…</div>
+    </div>
+    <div class="card">
+      <div class="ks-step"><span class="ks-num">1</span><div class="ks-title">Photograph both rectangles</div></div>
+      <p class="ks-copy">Show the full inner edge of the physical screen and all four projected corners. Keep this same photo for the preview below.</p>
+      <div class="ks-actions">
+        <button id="ks-grid-open" class="acc">Show correction grid</button>
+        <button id="ks-grid-close" class="ghost">Close grid</button>
+      </div>
+      <div class="ks-actions" style="margin-top:8px">
+        <label class="file-btn" for="ks-photo">Choose same photo</label>
+        <button id="ks-copy-prompt">Copy ChatGPT prompt</button>
+      </div>
+      <input class="visually-hidden" id="ks-photo" type="file" accept="image/jpeg,image/png,image/webp">
+      <details class="ks-prompt">
+        <summary>View prompt before copying</summary>
+        <textarea id="ks-prompt" readonly aria-label="ChatGPT annotation prompt"></textarea>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="ks-step"><span class="ks-num">2</span><div class="ks-title">Adjust points or paste JSON</div></div>
+      <p class="ks-copy">Choosing a photo creates draggable points automatically. Select which outline to edit, then drag its LT, RT, RB and LB nodes onto the matching corners.</p>
+      <div class="ks-layer" role="group" aria-label="Editable keystone outline">
+        <button data-ks-layer="screen" class="on">Edit physical screen</button>
+        <button data-ks-layer="projection">Edit projection</button>
+      </div>
+      <label class="visually-hidden" for="ks-json">ChatGPT corner annotation JSON</label>
+      <details class="ks-prompt">
+        <summary>Optional: paste ChatGPT annotation</summary>
+        <textarea id="ks-json" spellcheck="false" autocomplete="off" placeholder='{"coordinate_space":1000,"screen":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]},"projection":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]}}'></textarea>
+      </details>
+      <div class="ks-actions" style="margin-top:8px">
+        <button id="ks-preview-btn" class="acc">Use pasted JSON</button>
+        <button id="ks-reset-points" class="ghost">Reset manual points</button>
+      </div>
+      <div class="ks-preview" id="ks-preview">
+        <div class="ks-placeholder" id="ks-placeholder">Choose the same photo and paste its annotation to review both outlines.</div>
+        <canvas id="ks-canvas" hidden aria-label="Annotated keystone preview"></canvas>
+      </div>
+      <div class="ks-legend"><span><i style="background:#42d77d"></i>Physical screen</span><span><i style="background:#4c9dff"></i>Projected image</span><span>Drag nodes by touch</span></div>
+      <div class="ks-status" id="ks-status" role="status" aria-live="polite">Loading projector keystone state…</div>
+    </div>
+
+    <div class="card">
+      <div class="ks-step"><span class="ks-num">3</span><div class="ks-title">Review and apply</div></div>
+      <div class="ks-values" id="ks-values">
+        <span>Current</span><code id="ks-current">—</code>
+        <span>Proposed</span><code id="ks-proposed">—</code>
+      </div>
+      <p class="ks-danger-note">Applying changes the live projection. A one-step backup is saved on the projector before every apply.</p>
+      <div class="ks-actions" style="margin-top:10px">
+        <button id="ks-apply" class="acc2" disabled>Apply correction</button>
+        <button id="ks-restore" class="ghost" disabled>Restore previous</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= TOOLS ================= -->
   <section class="tabpane" data-tab="tools">
+    <div class="card">
+      <div class="sec">Picture controls <span class="note">— Beem hardware PQ</span></div>
+      <p class="advanced-note">Changes affect the live projector image. Adjust locally, review the values, then apply them together. One rollback snapshot is saved first.</p>
+      <div class="setting-list" id="picture-settings">
+        <div class="setting"><div class="setting-head"><label for="pq-brightness">Brightness</label><output data-pq-out="brightness">—</output></div><input id="pq-brightness" data-pq="brightness" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-contrast">Contrast</label><output data-pq-out="contrast">—</output></div><input id="pq-contrast" data-pq="contrast" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-saturation">Saturation</label><output data-pq-out="saturation">—</output></div><input id="pq-saturation" data-pq="saturation" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-hue">Hue</label><output data-pq-out="hue">—</output></div><input id="pq-hue" data-pq="hue" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-sharpness">Sharpness</label><output data-pq-out="sharpness">—</output></div><input id="pq-sharpness" data-pq="sharpness" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-backlight">Backlight</label><output data-pq-out="backlight">—</output></div><input id="pq-backlight" data-pq="backlight" type="range" min="0" max="100" step="1"></div>
+        <div class="setting"><div class="setting-head"><label for="pq-gamma">Gamma curve</label></div><select id="pq-gamma" data-pq="gamma"><option value="0">1.8</option><option value="1">2.0</option><option value="2">2.1</option><option value="3">2.2</option><option value="4">2.4</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-temperature">Color temperature</label></div><select id="pq-temperature" data-pq="color_temperature"><option value="0">Standard</option><option value="1">Cool</option><option value="2">Warm</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-tnr">Temporal noise reduction</label></div><select id="pq-tnr" data-pq="tnr"><option value="0">Off</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-snr">Spatial noise reduction</label></div><select id="pq-snr" data-pq="snr"><option value="0">Off</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-dci">Dynamic contrast</label></div><select id="pq-dci" data-pq="dci"><option value="0">Off</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-black">Black extension</label></div><select id="pq-black" data-pq="black_extension"><option value="0">Off</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="pq-dynamic-backlight">Dynamic backlight</label></div><select id="pq-dynamic-backlight" data-pq="dynamic_backlight"><option value="0">Off</option><option value="1">On</option></select></div>
+      </div>
+      <div class="settings-actions">
+        <button id="pq-apply" class="acc2" disabled>Apply picture</button>
+        <button id="pq-restore" class="ghost" disabled>Restore previous</button>
+      </div>
+      <div class="settings-status" id="settings-status">Open Tools to load projector settings.</div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Power &amp; interface</div>
+      <div class="setting-list">
+        <div class="setting"><div class="setting-head"><label for="set-timeout">Screen timeout</label></div><select id="set-timeout" data-setting="screen_timeout"><option value="300000">5 minutes</option><option value="900000">15 minutes</option><option value="1800000">30 minutes</option><option value="3600000">1 hour</option><option value="2147483647">Never (practical)</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-screensaver">Screensaver</label></div><select id="set-screensaver" data-setting="screensaver"><option value="0">Off</option><option value="1">On</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-stay-awake">Stay awake while powered</label></div><select id="set-stay-awake" data-setting="stay_awake"><option value="0">Off</option><option value="7">USB / AC / wireless power</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-rotation">Rotation</label></div><select id="set-rotation" data-setting="rotation"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-animation">Animation speed</label></div><select id="set-animation" data-setting="animation"><option value="1">Normal</option><option value="0.5">Fast</option><option value="0">Off</option></select></div>
+      </div>
+      <div class="settings-actions"><button id="settings-refresh" class="ghost">Refresh</button><button id="settings-apply" class="acc">Apply selected</button></div>
+    </div>
+
     <div class="card">
       <div class="sec">Processes <span class="note">— top 15 by CPU</span></div>
       <div class="ctl">
@@ -359,9 +552,11 @@
   <button data-go="pad"><span class="ic">🖱️</span>Pad</button>
   <button data-go="apps"><span class="ic">📺</span>Apps</button>
   <button data-go="stats"><span class="ic">📊</span>Stats</button>
+  <button data-go="align"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5M8 8h8v8H8z"/></svg></span>Align</button>
   <button data-go="tools"><span class="ic">🛠️</span>Tools</button>
 </nav>
 
+<script src="/keystone.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
 const token  = params.get('token') || '';
@@ -379,9 +574,17 @@ function showTab(name, remember) {
   if (remember !== false) localStorage.setItem('tab', name);
   if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
   if (name === 'tools' && !procsLoaded) { procsLoaded = true; pullProcs(); }
+  if (name === 'tools' && !settingsLoaded) { settingsLoaded = true; pullSettings(); }
   if (name === 'apps'  && !appsLoaded)  { appsLoaded  = true; pullApps(); }
+  if (name === 'align' && !keystoneLoaded) { keystoneLoaded = true; pullKeystoneStatus(); }
 }
 navBtns.forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+document.getElementById('global-keyboard').addEventListener('click', () => {
+  showTab('remote');
+  const input = document.getElementById('txt');
+  input.focus();
+  input.scrollIntoView({block:'center', behavior:'smooth'});
+});
 
 /* ---------------- WebSocket to native mousedaemon (port 8788) ---------------- */
 let ws = null, wsReady = false, wsPending = [];
@@ -489,6 +692,24 @@ function queueMove(dx, dy) {
 }
 function wsClick(b) { if (!wsSend('C' + b)) call('mc=' + b); }
 function wsWheel(n) { if (!wsSend('W ' + n)) call('mw=' + n); }
+let mouseHeld = false;
+const holdBtn = document.getElementById('hold');
+function renderMouseHold() {
+  holdBtn.textContent = mouseHeld ? 'Release' : 'Hold';
+  holdBtn.classList.toggle('on', mouseHeld);
+  holdBtn.setAttribute('aria-pressed', mouseHeld ? 'true' : 'false');
+}
+async function setMouseHeld(on) {
+  if (mouseHeld === on) return;
+  mouseHeld = on; renderMouseHold();
+  await call(on ? 'md=L' : 'mu=L');
+}
+function releaseMouseHeld() {
+  if (!mouseHeld) return;
+  mouseHeld = false; renderMouseHold();
+  const url = '/cgi-bin/remote.cgi?mu=L' + (token ? '&token=' + encodeURIComponent(token) : '');
+  fetch(url, {cache:'no-store', keepalive:true}).catch(() => {});
+}
 
 setTimeout(() => { hint.style.transition='opacity .5s'; hint.style.opacity=0.4; }, 800);
 
@@ -545,7 +766,7 @@ function endTouch(e) {
   if (touches.size === 0) {
     document.body.classList.remove('padding');
     const dur = Date.now() - startTime;
-    if (moved < 10 && dur < 300) { wsClick('L'); navigator.vibrate && navigator.vibrate(10); }
+    if (!mouseHeld && moved < 10 && dur < 300) { wsClick('L'); navigator.vibrate && navigator.vibrate(10); }
   }
 }
 pad.addEventListener('touchend',    endTouch, PASS);
@@ -554,9 +775,11 @@ pad.addEventListener('touchcancel', endTouch, PASS);
 document.getElementById('click').addEventListener('click',  () => wsClick('L'));
 document.getElementById('rclick').addEventListener('click', () => wsClick('R'));
 document.getElementById('dclick').addEventListener('click', () => { wsClick('L'); setTimeout(() => wsClick('L'), 90); });
+holdBtn.addEventListener('click', () => setMouseHeld(!mouseHeld));
 document.getElementById('center').addEventListener('click', () => { localX = 0.5; localY = 0.5; updateCursorVisual(); });
 document.getElementById('scrollup').addEventListener('click', () => wsWheel(3));
 document.getElementById('scrolldn').addEventListener('click', () => wsWheel(-3));
+window.addEventListener('pagehide', releaseMouseHeld);
 
 /* ---------------- app launcher (enumerated from the device) ---------------- */
 let appsLoaded = false;
@@ -623,6 +846,109 @@ async function pullApps() {
   }
 }
 document.getElementById('apps-refresh').addEventListener('click', pullApps);
+
+/* ---------------- advanced settings ---------------- */
+let settingsLoaded = false;
+let settingsSnapshot = null;
+const settingsStatus = document.getElementById('settings-status');
+const pqInputs = [...document.querySelectorAll('[data-pq]')];
+
+function setSettingsStatus(message, kind) {
+  settingsStatus.textContent = message;
+  settingsStatus.classList.toggle('ok', kind === 'ok');
+  settingsStatus.classList.toggle('err', kind === 'err');
+}
+
+async function settingsRequest(action, values, method) {
+  const body = new URLSearchParams({action, token});
+  Object.entries(values || {}).forEach(([key, value]) => body.set(key, value));
+  const options = {cache:'no-store'};
+  let url = '/cgi-bin/settings.cgi';
+  if (method === 'POST') {
+    options.method = 'POST';
+    options.headers = {'Content-Type':'application/x-www-form-urlencoded'};
+    options.body = body;
+  } else {
+    url += '?' + body.toString();
+  }
+  const response = await fetch(url, options);
+  const result = await response.json();
+  if (!response.ok || result.status !== 'ok') throw new Error(result.detail || ('HTTP ' + response.status));
+  return result;
+}
+
+function renderSettings(result) {
+  settingsSnapshot = result;
+  const values = result.values || {};
+  document.querySelectorAll('[data-setting]').forEach(input => {
+    if (values[input.dataset.setting] !== undefined) input.value = String(values[input.dataset.setting]);
+  });
+  const picture = result.picture || {};
+  pqInputs.forEach(input => {
+    if (picture[input.dataset.pq] !== undefined) input.value = String(picture[input.dataset.pq]);
+  });
+  document.querySelectorAll('[data-pq-out]').forEach(output => {
+    const input = document.querySelector('[data-pq="' + output.dataset.pqOut + '"]');
+    output.textContent = input ? input.value : '—';
+  });
+  document.getElementById('pq-apply').disabled = !result.picture_supported;
+  document.getElementById('pq-restore').disabled = !result.picture_backup_available;
+  setSettingsStatus(result.picture_supported ? 'Hardware picture controls loaded.' : 'Vendor picture controls are unavailable.', result.picture_supported ? 'ok' : 'err');
+}
+
+async function pullSettings() {
+  setSettingsStatus('Loading projector settings…');
+  try { renderSettings(await settingsRequest('status')); }
+  catch (error) { setSettingsStatus('Settings load failed: ' + error.message, 'err'); }
+}
+
+pqInputs.filter(input => input.type === 'range').forEach(input => {
+  input.addEventListener('input', () => {
+    const output = document.querySelector('[data-pq-out="' + input.dataset.pq + '"]');
+    if (output) output.textContent = input.value;
+  });
+});
+
+document.getElementById('pq-apply').addEventListener('click', async () => {
+  const values = Object.fromEntries(pqInputs.map(input => [input.dataset.pq, input.value]));
+  const summary = 'Brightness ' + values.brightness + ', contrast ' + values.contrast + ', saturation ' + values.saturation + ', gamma ' + ['1.8','2.0','2.1','2.2','2.4'][Number(values.gamma)] + '.';
+  if (!confirm('Apply all staged picture controls?\n\n' + summary + '\n\nThe current picture will be saved for one-step restore.')) return;
+  const button = document.getElementById('pq-apply');
+  button.disabled = true; setSettingsStatus('Applying picture controls…');
+  try {
+    renderSettings(await settingsRequest('picture_apply', {...values, confirmation:'APPLY'}, 'POST'));
+    setSettingsStatus('Picture controls applied. Restore previous is available.', 'ok');
+  } catch (error) {
+    button.disabled = false; setSettingsStatus('Picture apply failed: ' + error.message, 'err');
+  }
+});
+
+document.getElementById('pq-restore').addEventListener('click', async () => {
+  if (!confirm('Restore the picture values saved immediately before the last apply?')) return;
+  const button = document.getElementById('pq-restore');
+  button.disabled = true; setSettingsStatus('Restoring previous picture…');
+  try {
+    renderSettings(await settingsRequest('picture_restore', {confirmation:'RESTORE'}, 'POST'));
+    setSettingsStatus('Previous picture settings restored.', 'ok');
+  } catch (error) {
+    button.disabled = false; setSettingsStatus('Picture restore failed: ' + error.message, 'err');
+  }
+});
+
+document.getElementById('settings-refresh').addEventListener('click', pullSettings);
+document.getElementById('settings-apply').addEventListener('click', async () => {
+  const controls = [...document.querySelectorAll('[data-setting]')];
+  if (!confirm('Apply the selected power and interface settings?')) return;
+  const button = document.getElementById('settings-apply');
+  button.disabled = true; setSettingsStatus('Applying device settings…');
+  try {
+    const values = Object.fromEntries(controls.map(input => [input.dataset.setting, input.value]));
+    renderSettings(await settingsRequest('device_apply', values, 'POST'));
+    setSettingsStatus('Power and interface settings applied.', 'ok');
+  } catch (error) {
+    setSettingsStatus('Device settings failed: ' + error.message, 'err');
+  } finally { button.disabled = false; }
+});
 
 /* ---------------- stats + processes ---------------- */
 let statsLoaded = false, procsLoaded = false;
@@ -716,6 +1042,7 @@ document.getElementById('proc-refresh').addEventListener('click', pullProcs);
 
 /* pause live polling when the tab is hidden */
 document.addEventListener('visibilitychange', () => {
+  if (document.hidden) releaseMouseHeld();
   if (document.hidden && liveTimer) { clearInterval(liveTimer); liveTimer = null; liveBtn.textContent = 'Live: off'; liveBtn.classList.remove('on'); }
 });
 
@@ -738,6 +1065,283 @@ document.getElementById('show-logcat').addEventListener('click', async () => {
   } catch (e) { out.textContent = 'failed'; }
 });
 
+/* ---------------- keystone lab ---------------- */
+let keystoneLoaded = false;
+let ksCurrent = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
+let ksLayer = 'screen', ksDragging = null;
+const ksPrompt = document.getElementById('ks-prompt');
+const ksJson = document.getElementById('ks-json');
+const ksStatus = document.getElementById('ks-status');
+const ksQuickStatus = document.getElementById('ks-quick-status');
+const ksCanvas = document.getElementById('ks-canvas');
+const ksPlaceholder = document.getElementById('ks-placeholder');
+const ksValues = document.getElementById('ks-values');
+const ksApply = document.getElementById('ks-apply');
+const ksRestore = document.getElementById('ks-restore');
+ksPrompt.value = KeystoneGeometry.chatGptPrompt();
+
+function ksSetStatus(message, kind) {
+  [ksStatus, ksQuickStatus].forEach(status => {
+    status.textContent = message;
+    status.classList.toggle('ok', kind === 'ok');
+    status.classList.toggle('err', kind === 'err');
+  });
+}
+
+function ksFmt(insets) {
+  return KeystoneGeometry.CORNERS.map(k => k.toUpperCase() + ' ' + insets[k].join(',')).join(' · ');
+}
+
+async function ksRequest(action, values) {
+  const body = new URLSearchParams({action, token});
+  Object.entries(values || {}).forEach(([key, value]) => body.set(key, value));
+  const response = await fetch('/cgi-bin/keystone.cgi', {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body, cache:'no-store'
+  });
+  const result = await response.json();
+  if (!response.ok || result.status !== 'ok') throw new Error(result.detail || ('HTTP ' + response.status));
+  return result;
+}
+
+async function pullKeystoneStatus() {
+  try {
+    const response = await fetch('/cgi-bin/keystone.cgi?action=status&token=' + encodeURIComponent(token), {cache:'no-store'});
+    const result = await response.json();
+    if (result.status !== 'ok') throw new Error(result.detail || 'status failed');
+    if (!result.supported || !result.current) {
+      ksSetStatus('This projector does not expose the supported four-corner firmware interface.', 'err');
+      return;
+    }
+    ksCurrent = result.current;
+    ksRestore.disabled = !result.backup_available;
+    ksSetStatus('Projector ready. Current values loaded.', 'ok');
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    if (ksAnnotation) updateKeystoneProposal('Projector ready. Drag points or apply the reviewed proposal.');
+  } catch (error) {
+    ksSetStatus('Could not read projector state: ' + error.message, 'err');
+  }
+}
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const helper = document.createElement('textarea');
+  helper.value = text; helper.setAttribute('readonly', '');
+  helper.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(helper); helper.select();
+  const copied = document.execCommand('copy'); helper.remove();
+  if (!copied) throw new Error('browser denied clipboard access');
+}
+
+document.getElementById('ks-copy-prompt').addEventListener('click', async () => {
+  try { await copyText(ksPrompt.value); ksSetStatus('Prompt copied. Attach the screen photo in ChatGPT and paste its JSON here.', 'ok'); }
+  catch (error) { ksSetStatus('Copy failed: select the visible prompt and copy it manually.', 'err'); }
+});
+
+document.getElementById('ks-photo').addEventListener('change', event => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { ksSetStatus('Choose a JPG, PNG, or WebP image.', 'err'); return; }
+  if (ksImageUrl) URL.revokeObjectURL(ksImageUrl);
+  ksImageUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    ksImage = image;
+    if (!ksAnnotation) resetManualPoints();
+    else { drawKeystoneOverlay(); updateKeystoneProposal('Photo loaded. Drag points or apply the valid proposal.'); }
+  };
+  image.onerror = () => ksSetStatus('The selected image could not be decoded.', 'err');
+  image.src = ksImageUrl;
+});
+
+function drawQuad(ctx, quad, color, label, width, height, active) {
+  ctx.beginPath();
+  quad.forEach((point, index) => {
+    const x = point[0] * width, y = point[1] * height;
+    if (index) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  });
+  ctx.closePath(); ctx.globalAlpha = active ? 1 : .72; ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(active ? 4 : 3, width / (active ? 210 : 260)); ctx.stroke();
+  ctx.fillStyle = color; ctx.font = '600 ' + Math.max(12, width / 45) + 'px system-ui';
+  ctx.fillText(label, quad[0][0] * width + 6, Math.max(18, quad[0][1] * height - 8));
+  quad.forEach((point, index) => {
+    const x = point[0] * width, y = point[1] * height;
+    ctx.beginPath(); ctx.arc(x, y, Math.max(4, width / 180), 0, Math.PI * 2); ctx.fill();
+    ctx.fillText(KeystoneGeometry.CORNERS[index].toUpperCase(), x + 7, y + 16);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawKeystoneOverlay() {
+  if (!ksImage || !ksAnnotation) return;
+  const scale = Math.min(1, 1200 / Math.max(ksImage.naturalWidth, ksImage.naturalHeight));
+  ksCanvas.width = Math.round(ksImage.naturalWidth * scale);
+  ksCanvas.height = Math.round(ksImage.naturalHeight * scale);
+  const ctx = ksCanvas.getContext('2d');
+  ctx.drawImage(ksImage, 0, 0, ksCanvas.width, ksCanvas.height);
+  drawQuad(ctx, ksAnnotation.screen, '#42d77d', 'SCREEN', ksCanvas.width, ksCanvas.height, ksLayer === 'screen');
+  drawQuad(ctx, ksAnnotation.projection, '#4c9dff', 'PROJECTION', ksCanvas.width, ksCanvas.height, ksLayer === 'projection');
+  ksCanvas.hidden = false; ksCanvas.classList.add('editing'); ksPlaceholder.hidden = true;
+}
+
+function annotationObject(annotation) {
+  const result = {coordinate_space:1000, screen:{}, projection:{}};
+  for (const layer of ['screen','projection']) {
+    KeystoneGeometry.CORNERS.forEach((name, index) => {
+      result[layer][name] = annotation[layer][index].map(value => Math.round(value * 1000));
+    });
+  }
+  return result;
+}
+
+function resetManualPoints() {
+  if (!ksImage) { ksSetStatus('Choose a photo before creating manual points.', 'err'); return; }
+  ksAnnotation = KeystoneGeometry.parseAnnotation({
+    coordinate_space:1000,
+    screen:{lt:[150,150],rt:[850,150],rb:[850,850],lb:[150,850]},
+    projection:{lt:[60,60],rt:[940,60],rb:[940,940],lb:[60,940]}
+  });
+  ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
+  drawKeystoneOverlay();
+  updateKeystoneProposal('Manual points ready. Drag all eight nodes onto their matching corners.');
+}
+
+function updateKeystoneProposal(successMessage) {
+  try {
+    if (!ksCurrent) throw new Error('projector state is not loaded');
+    ksAnnotation = KeystoneGeometry.parseAnnotation(annotationObject(ksAnnotation));
+    ksProposal = KeystoneGeometry.solveInsets(ksAnnotation, ksCurrent);
+    ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    document.getElementById('ks-proposed').textContent = ksFmt(ksProposal);
+    ksValues.classList.add('on'); ksApply.disabled = false;
+    ksSetStatus(successMessage || 'Points valid. Review every corner before applying.', 'ok');
+  } catch (error) {
+    ksProposal = null; ksApply.disabled = true; ksValues.classList.remove('on');
+    ksSetStatus('Adjust the points: ' + error.message, 'err');
+  }
+}
+
+document.querySelectorAll('[data-ks-layer]').forEach(button => {
+  button.addEventListener('click', () => {
+    ksLayer = button.dataset.ksLayer;
+    document.querySelectorAll('[data-ks-layer]').forEach(item => item.classList.toggle('on', item === button));
+    drawKeystoneOverlay();
+  });
+});
+
+function canvasPoint(event) {
+  const rect = ksCanvas.getBoundingClientRect();
+  return [
+    Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+    Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+  ];
+}
+
+ksCanvas.addEventListener('pointerdown', event => {
+  if (!ksAnnotation) return;
+  const point = canvasPoint(event);
+  let nearest = -1, distance = Infinity;
+  ksAnnotation[ksLayer].forEach((candidate, index) => {
+    const dx = candidate[0] - point[0], dy = candidate[1] - point[1];
+    const d = Math.hypot(dx, dy);
+    if (d < distance) { distance = d; nearest = index; }
+  });
+  const hitRadius = 38 / Math.max(ksCanvas.getBoundingClientRect().width, 1);
+  if (nearest < 0 || distance > hitRadius) return;
+  ksDragging = {layer:ksLayer, index:nearest};
+  ksCanvas.setPointerCapture(event.pointerId); event.preventDefault();
+});
+
+ksCanvas.addEventListener('pointermove', event => {
+  if (!ksDragging || !ksAnnotation) return;
+  ksAnnotation[ksDragging.layer][ksDragging.index] = canvasPoint(event);
+  drawKeystoneOverlay(); event.preventDefault();
+});
+
+function finishPointDrag(event) {
+  if (!ksDragging) return;
+  ksDragging = null;
+  try { ksCanvas.releasePointerCapture(event.pointerId); } catch (error) {}
+  updateKeystoneProposal('Manual points updated. Check both outlines before applying.');
+}
+ksCanvas.addEventListener('pointerup', finishPointDrag);
+ksCanvas.addEventListener('pointercancel', finishPointDrag);
+
+document.getElementById('ks-preview-btn').addEventListener('click', () => {
+  try {
+    if (!ksImage) throw new Error('choose the same photo first so you can verify the overlay');
+    if (!ksCurrent) throw new Error('projector state is not loaded');
+    const raw = JSON.parse(ksJson.value);
+    if (raw.error) throw new Error(String(raw.error));
+    ksAnnotation = KeystoneGeometry.parseAnnotation(raw);
+    drawKeystoneOverlay();
+    updateKeystoneProposal('ChatGPT annotation loaded. Drag any inaccurate node before applying.');
+  } catch (error) {
+    ksProposal = null; ksApply.disabled = true; ksValues.classList.remove('on');
+    ksSetStatus('Cannot create proposal: ' + error.message, 'err');
+  }
+});
+
+document.getElementById('ks-reset-points').addEventListener('click', resetManualPoints);
+
+ksApply.addEventListener('click', async () => {
+  if (!ksProposal) return;
+  const summary = ksFmt(ksProposal);
+  if (!confirm('Apply this keystone correction?\n\n' + summary + '\n\nA rollback copy will be saved first.')) return;
+  ksApply.disabled = true;
+  try {
+    const result = await ksRequest('apply', {values:KeystoneGeometry.firmwareCsv(ksProposal), confirmation:'APPLY'});
+    ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null;
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    ksSetStatus('Correction applied. Use Restore previous if the projection is worse.', 'ok');
+  } catch (error) { ksApply.disabled = false; ksSetStatus('Apply failed: ' + error.message, 'err'); }
+});
+
+ksRestore.addEventListener('click', async () => {
+  if (!confirm('Restore the keystone values saved immediately before the last apply?')) return;
+  ksRestore.disabled = true;
+  try {
+    const result = await ksRequest('restore', {confirmation:'RESTORE'});
+    ksCurrent = result.current; document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    ksSetStatus('Previous keystone correction restored.', 'ok');
+  } catch (error) { ksRestore.disabled = false; ksSetStatus('Restore failed: ' + error.message, 'err'); }
+});
+
+const ksZoom = document.getElementById('ks-zoom');
+const ksZoomValue = document.getElementById('ks-zoom-value');
+ksZoom.addEventListener('input', () => { ksZoomValue.textContent = ksZoom.value + '%'; });
+
+document.getElementById('ks-zoom-apply').addEventListener('click', async () => {
+  const size = ksZoom.value;
+  if (!confirm('Set the image to ' + size + '%?\n\nThis replaces the current four-corner correction with a centered rectangle.')) return;
+  try {
+    const result = await ksRequest('zoom', {size, confirmation:'ZOOM'});
+    ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null; ksApply.disabled = true;
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    ksSetStatus(result.detail + '. Restore previous is available.', 'ok');
+  } catch (error) { ksSetStatus('Image size failed: ' + error.message, 'err'); }
+});
+
+document.getElementById('ks-reset').addEventListener('click', async () => {
+  if (!confirm('Reset keystone and zoom to the full native image?\n\nThe current alignment will be saved for Restore previous.')) return;
+  try {
+    const result = await ksRequest('reset', {confirmation:'RESET'});
+    ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null; ksApply.disabled = true;
+    ksZoom.value = '100'; ksZoomValue.textContent = '100%';
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    ksSetStatus('Keystone and zoom reset. The full native image is active.', 'ok');
+  } catch (error) { ksSetStatus('Reset failed: ' + error.message, 'err'); }
+});
+
+document.getElementById('ks-grid-open').addEventListener('click', async () => {
+  try { const result = await ksRequest('view_open'); ksSetStatus(result.detail, 'ok'); }
+  catch (error) { ksSetStatus('Grid failed: ' + error.message, 'err'); }
+});
+document.getElementById('ks-grid-close').addEventListener('click', async () => {
+  try { const result = await ksRequest('view_close'); ksSetStatus(result.detail, 'ok'); }
+  catch (error) { ksSetStatus('Could not close grid: ' + error.message, 'err'); }
+});
+
 /* ---------------- desktop keyboard shortcuts ---------------- */
 document.addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
@@ -747,7 +1351,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------------- boot ---------------- */
-showTab(localStorage.getItem('tab') || 'remote', false);
+showTab(params.get('tab') || localStorage.getItem('tab') || 'remote', false);
 if (localStorage.getItem('statsLive') === '1') setLive(true);
 </script>
 </body>

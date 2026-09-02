@@ -2,9 +2,10 @@
 *.keystore
 *.pk8
 *.pem
-key*
+/key*
 build/
 out/
 __pycache__/
+.venv/
 *.pyc
 *.idsig

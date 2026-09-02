@@ -1,6 +1,6 @@
 id=tvremoteweb
 name=TVRemoteWeb
-version=1.0.0
+version=1.0.0-experimental
 versionCode=100
 author=disc0nnctd
-description=Drive your Android TV box from any phone browser on the LAN. D-pad, real mouse touchpad, app launcher, system monitor. No app to install on the phone.
+description=Experimental branch: phone remote, mouse drag, advanced Beem picture controls, monitoring, and reviewable calibration.
