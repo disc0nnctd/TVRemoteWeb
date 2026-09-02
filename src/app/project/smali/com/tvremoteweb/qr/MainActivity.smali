@@ -71,3 +71,38 @@
     :cond_0
     return-void
 .end method
+
+
+# The QR tile is a short-lived pairing screen. Explicitly tear down WebView
+# when it loses the foreground so Chromium does not retain ~100 MB of cached
+# renderer/graphics memory behind the launcher.
+.method protected onStop()V
+    .locals 2
+
+    invoke-super {p0}, Landroid/app/Activity;->onStop()V
+
+    iget-object v0, p0, Lcom/tvremoteweb/qr/MainActivity;->web:Landroid/webkit/WebView;
+
+    if-eqz v0, :cond_0
+
+    invoke-virtual {v0}, Landroid/webkit/WebView;->stopLoading()V
+
+    const-string v1, "about:blank"
+
+    invoke-virtual {v0, v1}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
+
+    invoke-virtual {v0}, Landroid/webkit/WebView;->clearHistory()V
+
+    invoke-virtual {v0}, Landroid/webkit/WebView;->removeAllViews()V
+
+    invoke-virtual {v0}, Landroid/webkit/WebView;->destroy()V
+
+    const/4 v1, 0x0
+
+    iput-object v1, p0, Lcom/tvremoteweb/qr/MainActivity;->web:Landroid/webkit/WebView;
+
+    :cond_0
+    invoke-virtual {p0}, Landroid/app/Activity;->finishAndRemoveTask()V
+
+    return-void
+.end method

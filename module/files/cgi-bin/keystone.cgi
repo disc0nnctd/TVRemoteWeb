@@ -215,6 +215,8 @@ case "$action" in
       done < "$VIEW_FILE"
       rm -f "$VIEW_FILE"
     fi
+    # The vendor activity otherwise remains the high-memory previous process.
+    am force-stop com.htc.htcsettings >/dev/null 2>&1
     json_headers; printf '{"status":"ok","detail":"grid closed; vendor values restored"}\n'
     ;;
   *) respond_error "unknown keystone action" ;;

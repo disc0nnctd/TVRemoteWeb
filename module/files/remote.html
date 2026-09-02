@@ -702,7 +702,7 @@ document.getElementById('url').addEventListener('keydown', e => {
 
 /* ---------------- QR splash ---------------- */
 document.getElementById('show-qr').addEventListener('click',     () => call('splash=show'));
-document.getElementById('hide-splash').addEventListener('click', () => call('k=BACK'));
+document.getElementById('hide-splash').addEventListener('click', () => call('splash=hide'));
 
 /* ---------------- Touchpad (real mouse via /dev/input/event7) ---------------- */
 let sens = parseFloat(localStorage.getItem('sens') || '2.5');
@@ -1211,7 +1211,9 @@ function setLive(on) {
   if (on) {
     liveBtn.classList.add('on'); liveBtn.textContent = 'Live: on';
     pullStats(false);
-    liveTimer = setInterval(() => pullStats(false), 5000);
+    // A process snapshot briefly consumes CPU on this 1 GB projector. Fifteen
+    // seconds stays useful for monitoring without continuously perturbing it.
+    liveTimer = setInterval(() => pullStats(false), 15000);
   } else {
     liveBtn.classList.remove('on'); liveBtn.textContent = 'Live: off';
     if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }

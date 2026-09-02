@@ -156,6 +156,7 @@ if [ -n "$splash" ]; then
     off|disable) : > "$FLAG"; detail="boot-splash disabled" ;;
     on|enable)   rm -f "$FLAG"; detail="boot-splash enabled" ;;
     show|now)    am start -a android.intent.action.VIEW -d file:///sdcard/tvr-splash.png -t image/png >/dev/null 2>&1; detail="splash shown" ;;
+    hide|dismiss) input keyevent KEYCODE_HOME >/dev/null 2>&1; am force-stop com.tvremoteweb.qr >/dev/null 2>&1; detail="splash dismissed and QR renderer released" ;;
     status)      if [ -f "$FLAG" ]; then detail="splash: disabled"; else detail="splash: enabled"; fi ;;
     *)           status="err"; detail="unknown splash: $splash" ;;
   esac

@@ -92,13 +92,17 @@ up_min=$(( (uptime_s % 3600) / 60 ))
 # ---- top processes ----
 procs_json=""
 if [ "$top_n" -gt 0 ]; then
+  scan_n=$((top_n + 5))
   # `top -n 1 -b -m N -o %CPU` prints top N by CPU
-  procs_json=$(top -n 1 -b -m "$top_n" 2>/dev/null | awk -v n="$top_n" '
+  procs_json=$(top -n 1 -b -m "$scan_n" 2>/dev/null | awk -v n="$top_n" '
     /^ *PID/ { start=1; next }
     start && NF >= 12 && count < n {
       pid=$1; cpu=$9; mem=$10; time=$11;
       # ARGS is last field(s). Reconstruct name = everything from field 12
       name=""; for (i=12; i<=NF; i++) name = name (i>12?" ":"") $i
+      # Do not present the one-shot measurement command as an app consuming
+      # resources; it exits as soon as this response is generated.
+      if (name ~ /^top( |$)/ || name ~ /stats\.cgi/) next
       # escape json
       gsub(/\\/, "\\\\", name); gsub(/"/, "\\\"", name)
       if (length(name) > 60) name = substr(name, 1, 60) "…"
