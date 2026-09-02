@@ -165,6 +165,13 @@
   .settings-status.ok { color:#8edba5; border-color:#275c3a; }
   .settings-status.err { color:#ff9b9b; border-color:#683239; }
   .advanced-note { margin:0 2px 10px; color:var(--muted); font-size:10.5px; line-height:1.45; }
+  .pq-profiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .pq-profile { min-height:52px; padding:8px 9px; text-align:left; }
+  .pq-profile strong, .pq-profile small { display:block; }
+  .pq-profile strong { font-size:11.5px; }
+  .pq-profile small { margin-top:3px; color:var(--muted); font-size:9.5px; font-weight:400; line-height:1.25; }
+  .pq-profile[aria-pressed="true"] { color:#b9d8ff; background:#172c45; box-shadow:inset 0 0 0 2px var(--acc); }
+  .pq-profile-state { margin:-2px 2px 10px; color:#b9d8ff; font-size:10px; }
 
   /* ---------- keystone lab ---------- */
   .ks-step { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
@@ -487,7 +494,15 @@
   <section class="tabpane" data-tab="tools">
     <div class="card">
       <div class="sec">Picture controls <span class="note">— Beem hardware PQ</span></div>
-      <p class="advanced-note">Enable live preview to see each change after a short pause, or leave it off to stage values. The first live change saves one rollback snapshot.</p>
+      <p class="advanced-note">Choose a starting profile, then customize any slider before Apply. Profiles are staged locally and never change the picture by themselves.</p>
+      <div class="pq-profiles" role="group" aria-label="Display picture profiles">
+        <button class="pq-profile" data-pq-profile="safe" aria-pressed="false"><strong>Safe enhancement</strong><small>Color + detail only</small></button>
+        <button class="pq-profile" data-pq-profile="balanced" aria-pressed="false"><strong>Daylight balanced</strong><small>Recommended for this room</small></button>
+        <button class="pq-profile" data-pq-profile="strong" aria-pressed="false"><strong>Strong daylight</strong><small>Higher contrast and color</small></button>
+        <button class="pq-profile" data-pq-profile="current" aria-pressed="false"><strong>Current values</strong><small>Discard staged edits</small></button>
+      </div>
+      <div class="pq-profile-state" id="pq-profile-state">Current projector values</div>
+      <p class="advanced-note">Enable live preview to see individual manual changes after a short pause. The first live change saves one rollback snapshot.</p>
       <label class="ks-lens"><input id="pq-live" type="checkbox"> Live preview picture changes</label>
       <div class="setting-list" id="picture-settings">
         <div class="setting"><div class="setting-head"><label for="pq-brightness">Brightness</label><output data-pq-out="brightness">—</output></div><input id="pq-brightness" data-pq="brightness" type="range" min="0" max="100" step="1"></div>
@@ -869,6 +884,25 @@ let settingsSnapshot = null;
 let pqLiveTimer = null;
 const settingsStatus = document.getElementById('settings-status');
 const pqInputs = [...document.querySelectorAll('[data-pq]')];
+const pqProfileButtons = [...document.querySelectorAll('[data-pq-profile]')];
+const pqProfileState = document.getElementById('pq-profile-state');
+const pqProfiles = {
+  safe:{label:'Safe enhancement', values:{saturation:70, sharpness:55}},
+  balanced:{label:'Daylight balanced', values:{brightness:55, contrast:68, saturation:70, sharpness:55}},
+  strong:{label:'Strong daylight', values:{brightness:52, contrast:72, saturation:72, sharpness:55, dci:3}}
+};
+
+function updatePictureOutputs() {
+  document.querySelectorAll('[data-pq-out]').forEach(output => {
+    const input = document.querySelector('[data-pq="' + output.dataset.pqOut + '"]');
+    output.textContent = input ? input.value : '—';
+  });
+}
+
+function markPictureProfile(name, label) {
+  pqProfileButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pqProfile === name)));
+  pqProfileState.textContent = label;
+}
 
 function setSettingsStatus(message, kind) {
   settingsStatus.textContent = message;
@@ -904,10 +938,8 @@ function renderSettings(result) {
   pqInputs.forEach(input => {
     if (picture[input.dataset.pq] !== undefined) input.value = String(picture[input.dataset.pq]);
   });
-  document.querySelectorAll('[data-pq-out]').forEach(output => {
-    const input = document.querySelector('[data-pq="' + output.dataset.pqOut + '"]');
-    output.textContent = input ? input.value : '—';
-  });
+  updatePictureOutputs();
+  markPictureProfile('current', 'Current projector values');
   document.getElementById('pq-apply').disabled = !result.picture_supported;
   document.getElementById('pq-restore').disabled = !result.picture_backup_available;
   setSettingsStatus(result.picture_supported ? 'Hardware picture controls loaded.' : 'Vendor picture controls are unavailable.', result.picture_supported ? 'ok' : 'err');
@@ -923,9 +955,29 @@ pqInputs.filter(input => input.type === 'range').forEach(input => {
   input.addEventListener('input', () => {
     const output = document.querySelector('[data-pq-out="' + input.dataset.pq + '"]');
     if (output) output.textContent = input.value;
+    markPictureProfile('', 'Custom staged values');
     queuePicturePreview(input);
   });
 });
+
+pqProfileButtons.forEach(button => button.addEventListener('click', () => {
+  const baseline = settingsSnapshot && settingsSnapshot.picture;
+  if (!baseline) { setSettingsStatus('Open Tools and wait for the current picture values to load.', 'err'); return; }
+  pqInputs.forEach(input => {
+    if (baseline[input.dataset.pq] !== undefined) input.value = String(baseline[input.dataset.pq]);
+  });
+  const name = button.dataset.pqProfile;
+  if (name !== 'current') {
+    Object.entries(pqProfiles[name].values).forEach(([key, value]) => {
+      const input = document.querySelector('[data-pq="' + key + '"]');
+      if (input) input.value = String(value);
+    });
+  }
+  updatePictureOutputs();
+  const label = name === 'current' ? 'Current projector values' : pqProfiles[name].label + ' · staged and editable';
+  markPictureProfile(name, label);
+  setSettingsStatus(name === 'current' ? 'Staged edits discarded.' : label + '. Tap Apply picture when ready.', 'ok');
+}));
 
 const pqLive = document.getElementById('pq-live');
 pqLive.checked = localStorage.getItem('pqLive') === '1';
@@ -950,7 +1002,10 @@ function queuePicturePreview(input) {
 }
 
 pqInputs.filter(input => input.tagName === 'SELECT').forEach(input => {
-  input.addEventListener('change', () => queuePicturePreview(input));
+  input.addEventListener('change', () => {
+    markPictureProfile('', 'Custom staged values');
+    queuePicturePreview(input);
+  });
 });
 
 document.getElementById('pq-apply').addEventListener('click', async () => {
