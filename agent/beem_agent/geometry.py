@@ -43,13 +43,14 @@ def insets_to_source_quad(insets: dict[str, list[int]]) -> np.ndarray:
     )
 
 
-def source_quad_to_insets(source: np.ndarray) -> dict[str, list[int]]:
+def source_quad_to_insets(source: np.ndarray, tolerance: float = 0.025) -> dict[str, list[int]]:
     source = np.asarray(source, dtype=np.float64)
     if source.shape != (4, 2):
         raise ValueError("source quad must be LT, RT, RB, LB")
     # Allow small phone-photo edge-estimation overshoot and clamp it below.
     # Larger misses still mean the target lies outside the raw projection.
-    if np.any(source < -0.025) or np.any(source > 1.025):
+    tolerance = max(0.0, float(tolerance))
+    if np.any(source < -tolerance) or np.any(source > 1.0 + tolerance):
         raise ValueError("target extends outside the projector's uncorrected image; move or resize the projector")
     source = np.clip(source, 0.0, 1.0)
     lt, rt, rb, lb = source
@@ -78,7 +79,13 @@ def solve_insets(
     photo_from_source = cv2.getPerspectiveTransform(source, projected)
     source_from_photo = np.linalg.inv(photo_from_source)
     desired = cv2.perspectiveTransform(target.reshape(1, 4, 2), source_from_photo).reshape(4, 2)
-    return source_quad_to_insets(desired)
+    values = [value for name in CORNER_NAMES for value in current_insets[name]]
+    # Centered photo presets (75/65/55) reserve an optical margin on every
+    # edge. Use at most half of that margin for a best-fit boundary clamp when
+    # phone/frame edge estimation overshoots slightly. Hand-adjusted states
+    # retain the strict default tolerance.
+    tolerance = min(0.125, min(values) / 1000.0) if max(values) - min(values) <= 1 and min(values) >= 60 else 0.025
+    return source_quad_to_insets(desired, tolerance=tolerance)
 
 
 @dataclass(frozen=True)

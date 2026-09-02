@@ -213,6 +213,8 @@
   .ks-lens input { width:18px; height:18px; accent-color:var(--acc); }
   .ks-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
   .ks-presets button { min-width:0; min-height:44px; padding:8px 4px; font-size:11px; }
+  .ks-auto-actions { display:grid; grid-template-columns:2fr 1fr; gap:8px; }
+  .ks-manual-toggle { width:100%; margin-top:8px; }
 
   /* ---------- bottom tab bar ---------- */
   nav {
@@ -400,6 +402,16 @@
   <!-- ================= KEYSTONE ALIGN ================= -->
   <section class="tabpane" data-tab="align">
     <div class="card">
+      <div class="sec">Auto align screen</div>
+      <p class="ks-copy">Prepares a centered 55% test image, then detects the blue projection and physical screen from one photo. You review the proposed best fit before applying it.</p>
+      <div class="ks-auto-actions">
+        <label class="file-btn acc" id="ks-auto-camera" for="ks-camera">📷 Start with camera</label>
+        <label class="file-btn" id="ks-auto-photo" for="ks-photo">Use photo</label>
+      </div>
+      <button id="ks-manual-toggle" class="ghost ks-manual-toggle" aria-expanded="false">Manual & advanced alignment</button>
+      <div class="ks-status" id="ks-auto-status" role="status" aria-live="polite">Loading projector keystone state…</div>
+    </div>
+    <div class="card ks-manual-only" hidden>
       <div class="sec">Quick display fit</div>
       <p class="ks-copy">Set a centered image size, or remove all four-corner correction and return to the full native image.</p>
       <label class="ks-zoom" for="ks-zoom">
@@ -414,7 +426,7 @@
       <p class="ks-danger-note">These actions replace the current four-corner correction. Restore previous undoes the last change.</p>
       <div class="ks-status" id="ks-quick-status" role="status" aria-live="polite">Loading projector keystone state…</div>
     </div>
-    <div class="card">
+    <div class="card ks-manual-only" hidden>
       <div class="ks-step"><span class="ks-num">1</span><div class="ks-title">Photograph both rectangles</div></div>
       <p class="ks-copy">Choose the largest preset where all four blue corners are clearly visible, then take one photo. A physical screen/frame may be absent.</p>
       <div class="ks-presets" role="group" aria-label="Detection image size">
@@ -432,22 +444,26 @@
     </div>
 
     <div class="card">
-      <div class="ks-step"><span class="ks-num">2</span><div class="ks-title">Detect and fine-tune</div></div>
-      <p class="ks-copy">Auto-detect finds the blue projection, then looks for a larger enclosing screen frame. If no reliable frame exists, place the four green target points manually.</p>
-      <div class="ks-actions" style="margin-top:8px">
-        <button id="ks-detect" class="acc" disabled>Detect both outlines</button>
-        <button id="ks-reset-points" class="ghost">Reset manual points</button>
-      </div>
-      <div class="ks-layer" role="group" aria-label="Choose outline to edit">
-        <button data-ks-layer="screen" class="on">Green · target screen</button>
-        <button data-ks-layer="projection">Blue · projection</button>
+      <div class="ks-step"><span class="ks-num">2</span><div class="ks-title">Detected fit</div></div>
+      <p class="ks-copy">Green is the physical screen; blue is the current projection. Auto mode calculates a best fit and safely clips small edge-estimation overshoot.</p>
+      <div class="ks-manual-only" hidden>
+        <div class="ks-actions" style="margin-top:8px">
+          <button id="ks-detect" class="acc" disabled>Detect both outlines</button>
+          <button id="ks-reset-points" class="ghost">Reset manual points</button>
+        </div>
+        <div class="ks-layer" role="group" aria-label="Choose outline to edit">
+          <button data-ks-layer="screen" class="on">Green · target screen</button>
+          <button data-ks-layer="projection">Blue · projection</button>
+        </div>
       </div>
       <div class="ks-preview" id="ks-preview">
         <div class="ks-placeholder" id="ks-placeholder">Take a photo or choose one to detect and review both outlines.</div>
         <canvas id="ks-canvas" hidden aria-label="Annotated keystone preview"></canvas>
       </div>
-      <label class="ks-lens"><input id="ks-lens" type="checkbox" checked> Precision lens while dragging</label>
-      <button id="ks-calculate" class="acc2" style="width:100%" disabled>Calculate reviewed fit</button>
+      <div class="ks-manual-only" hidden>
+        <label class="ks-lens"><input id="ks-lens" type="checkbox" checked> Precision lens while dragging</label>
+        <button id="ks-calculate" class="acc2" style="width:100%" disabled>Calculate reviewed fit</button>
+      </div>
       <div class="ks-legend"><span><i style="background:#42d77d"></i>Physical screen</span><span><i style="background:#4c9dff"></i>Projected image</span><span>Drag nodes by touch</span></div>
       <div class="ks-status" id="ks-status" role="status" aria-live="polite">Loading projector keystone state…</div>
     </div>
@@ -555,7 +571,7 @@
   <button data-go="tools"><span class="ic">🛠️</span>Tools</button>
 </nav>
 
-<script src="/keystone.js?v=20260902-screennew"></script>
+<script src="/keystone.js?v=20260902-calibration-clamp"></script>
 <script>
 const params = new URLSearchParams(location.search);
 const token  = params.get('token') || '';
@@ -1097,8 +1113,10 @@ let keystoneLoaded = false;
 let ksCurrent = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
 let ksLayer = 'screen', ksDragging = null;
 let ksReviewed = {screen:new Set(), projection:new Set()};
+let ksAutoMode = false, ksAutoPreparePromise = null;
 const ksStatus = document.getElementById('ks-status');
 const ksQuickStatus = document.getElementById('ks-quick-status');
+const ksAutoStatus = document.getElementById('ks-auto-status');
 const ksCanvas = document.getElementById('ks-canvas');
 const ksPlaceholder = document.getElementById('ks-placeholder');
 const ksValues = document.getElementById('ks-values');
@@ -1118,7 +1136,7 @@ function ksInvalidateProposal(message, kind) {
 }
 
 function ksSetStatus(message, kind) {
-  [ksStatus, ksQuickStatus].forEach(status => {
+  [ksStatus, ksQuickStatus, ksAutoStatus].forEach(status => {
     status.textContent = message;
     status.classList.toggle('ok', kind === 'ok');
     status.classList.toggle('err', kind === 'err');
@@ -1159,23 +1177,68 @@ async function pullKeystoneStatus() {
   }
 }
 
-function loadKeystonePhoto(event) {
+async function loadKeystonePhoto(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
   if (!/^image\//.test(file.type)) { ksSetStatus('Choose a supported image.', 'err'); return; }
   if (ksImageUrl) URL.revokeObjectURL(ksImageUrl);
   ksImageUrl = URL.createObjectURL(file);
   const image = new Image();
-  image.onload = () => {
+  image.onload = async () => {
     ksImage = image;
     ksDetect.disabled = false;
     resetManualPoints();
+    if (ksAutoMode) {
+      try {
+        const prepareError = ksAutoPreparePromise ? await ksAutoPreparePromise : null;
+        if (prepareError) throw prepareError;
+        await ksRequest('view_close');
+        ksSetStatus('Photo ready. Detecting the projection and screen on this phone…');
+        ksDetect.click();
+      } catch (error) {
+        ksSetStatus('Could not prepare the 55% test image: ' + error.message, 'err');
+      }
+    }
   };
   image.onerror = () => ksSetStatus('The selected image could not be decoded.', 'err');
   image.src = ksImageUrl;
 }
 document.getElementById('ks-photo').addEventListener('change', loadKeystonePhoto);
 document.getElementById('ks-camera').addEventListener('change', loadKeystonePhoto);
+
+function showManualAlignment(show) {
+  document.querySelectorAll('.ks-manual-only').forEach(element => { element.hidden = !show; });
+  const toggle = document.getElementById('ks-manual-toggle');
+  toggle.setAttribute('aria-expanded', String(show));
+  toggle.textContent = show ? 'Hide manual & advanced alignment' : 'Manual & advanced alignment';
+  if (show) ksAutoMode = false;
+}
+
+document.getElementById('ks-manual-toggle').addEventListener('click', () => {
+  showManualAlignment(document.getElementById('ks-manual-toggle').getAttribute('aria-expanded') !== 'true');
+});
+
+async function prepareAutoAlignment() {
+  ksSetStatus('Preparing the centered 55% test image…');
+  const result = await ksRequest('calibrate', {size:'55', confirmation:'CALIBRATE'});
+  ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null; ksApply.disabled = true;
+  ksZoom.value = '55'; ksZoomValue.textContent = '55%';
+  document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+  const grid = await ksRequest('view_open');
+  ksSetStatus(result.detail + '. ' + grid.detail + '. Take a photo with the full screen frame visible.', 'ok');
+}
+
+['ks-auto-camera','ks-auto-photo'].forEach(id => document.getElementById(id).addEventListener('click', () => {
+  ksAutoMode = true;
+  ksAutoPreparePromise = prepareAutoAlignment().then(() => null, error => {
+    ksSetStatus('Could not prepare the 55% test image: ' + error.message, 'err');
+    return error;
+  });
+}));
+
+document.querySelectorAll('.ks-manual-only label[for="ks-camera"], .ks-manual-only label[for="ks-photo"]').forEach(label => {
+  label.addEventListener('click', () => { ksAutoMode = false; ksAutoPreparePromise = null; });
+});
 
 function drawQuad(ctx, quad, color, label, width, height, active) {
   ctx.beginPath();
@@ -1327,6 +1390,7 @@ ksCalculate.addEventListener('click', () => updateKeystoneProposal('Fit calculat
 
 ksDetect.addEventListener('click', () => {
   if (!ksImage || !ksAnnotation) return;
+  const autoRun = ksAutoMode;
   ksDetect.disabled = true;
   ksSetStatus('Detecting the blue projection on this phone…');
   requestAnimationFrame(() => setTimeout(() => {
@@ -1349,13 +1413,20 @@ ksDetect.addEventListener('click', () => {
       } catch (error) { screenError = error.message; }
       drawKeystoneOverlay();
       if (screenDetected) {
-        ksInvalidateProposal('Both outlines detected: blue ' + Math.round(detected.confidence * 100) +
-          '% · green ' + Math.round(screenDetected.confidence * 100) + '%. Inspect every corner, then tap Calculate reviewed fit.', 'ok');
+        if (autoRun) {
+          updateKeystoneProposal('Auto alignment ready: blue ' + Math.round(detected.confidence * 100) +
+            '% · green ' + Math.round(screenDetected.confidence * 100) + '%. Review the outlines and proposed values, then apply.');
+        } else {
+          ksInvalidateProposal('Both outlines detected: blue ' + Math.round(detected.confidence * 100) +
+            '% · green ' + Math.round(screenDetected.confidence * 100) + '%. Inspect every corner, then tap Calculate reviewed fit.', 'ok');
+        }
       } else {
+        if (autoRun) showManualAlignment(true);
         ksInvalidateProposal('Blue projection detected (' + Math.round(detected.confidence * 100) +
           '%). Physical screen was not accepted (' + screenError + '). Place the four green target corners manually.');
       }
     } catch (error) {
+      if (autoRun) showManualAlignment(true);
       ksInvalidateProposal('Auto-detect could not finish: ' + error.message, 'err');
     } finally {
       work.width = 0; work.height = 0;

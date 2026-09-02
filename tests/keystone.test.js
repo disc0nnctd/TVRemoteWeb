@@ -132,3 +132,30 @@ test('real 55 percent calibration geometry stays near the reviewed fit', () => {
       corner+' axis '+axis+' differs: '+proposal[corner][axis]+' vs '+expected[corner][axis]);
   }
 });
+
+test('55 percent calibration clamps modest detected screen overshoot', () => {
+  const annotation = {
+    projection:[[.25,.25],[.75,.25],[.75,.75],[.25,.75]],
+    screen:[[0,0],[1,0],[1,1],[0,1]]
+  };
+  const current={lt:[113,113],rt:[113,113],rb:[113,113],lb:[113,113]};
+  assert.deepEqual(k.solveInsets(annotation,current), zero);
+});
+
+test('hand-adjusted state still rejects the same out-of-range fit', () => {
+  const annotation = {
+    projection:[[.25,.25],[.75,.25],[.75,.75],[.25,.75]],
+    screen:[[0,0],[1,0],[1,1],[0,1]]
+  };
+  const current={lt:[113,80],rt:[113,80],rb:[113,80],lb:[113,80]};
+  assert.throws(() => k.solveInsets(annotation,current), /extends outside/);
+});
+
+test('55 percent calibration still rejects a grossly impossible fit', () => {
+  const annotation = {
+    projection:[[.35,.35],[.65,.35],[.65,.65],[.35,.65]],
+    screen:[[0,0],[1,0],[1,1],[0,1]]
+  };
+  const current={lt:[113,113],rt:[113,113],rb:[113,113],lb:[113,113]};
+  assert.throws(() => k.solveInsets(annotation,current), /extends outside/);
+});

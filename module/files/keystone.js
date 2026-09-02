@@ -123,11 +123,23 @@
     ];
   }
 
-  function sourceToInsets(source) {
+  function calibrationEdgeTolerance(currentInsets) {
+    const current = validateInsets(currentInsets);
+    const values = CORNERS.flatMap(name => current[name]);
+    const minimum = Math.min(...values), maximum = Math.max(...values);
+    // The 75/65/55 photo presets are deliberately centered and leave optical
+    // image around every edge. Permit a conservative half of that preset
+    // margin to absorb phone/frame detection error at the raw-image boundary.
+    // Hand-adjusted states do not receive this wider best-fit allowance.
+    if (maximum - minimum <= 1 && minimum >= 60) return Math.min(0.125, minimum / 1000);
+    return 0.025;
+  }
+
+  function sourceToInsets(source, tolerance) {
     // Phone-edge estimates can overshoot a raw edge by a few pixels. Firmware
     // can safely clamp that small error; larger misses still indicate that the
     // target is physically outside the optical projection.
-    const tolerance = 0.025;
+    tolerance = Number.isFinite(tolerance) ? Math.max(0, tolerance) : 0.025;
     if (source.some(pair => pair.some(v => v < -tolerance || v > 1 + tolerance))) {
       fail('the physical screen extends outside the projector image; move or resize the projector first');
     }
@@ -145,7 +157,10 @@
     const parsed = annotation && annotation.screen ? annotation : parseAnnotation(annotation);
     const currentSource = insetsToSource(currentInsets);
     const photoToSource = homography(parsed.projection, currentSource);
-    return sourceToInsets(parsed.screen.map(point => transform(photoToSource, point)));
+    return sourceToInsets(
+      parsed.screen.map(point => transform(photoToSource, point)),
+      calibrationEdgeTolerance(currentInsets)
+    );
   }
 
   function firmwareCsv(insets) {

@@ -31,6 +31,20 @@ class GeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outside"):
             source_quad_to_insets(too_far)
 
+    def test_centered_55_percent_photo_clamps_a_modest_best_fit_overshoot(self):
+        projection = [[250, 250], [750, 250], [750, 750], [250, 750]]
+        screen = [[0, 0], [1000, 0], [1000, 1000], [0, 1000]]
+        current = {corner: [113, 113] for corner in ("lt", "rt", "rb", "lb")}
+        zero = {corner: [0, 0] for corner in ("lt", "rt", "rb", "lb")}
+        self.assertEqual(solve_insets(projection, screen, current), zero)
+
+    def test_hand_adjusted_photo_keeps_strict_overshoot_guard(self):
+        projection = [[250, 250], [750, 250], [750, 750], [250, 750]]
+        screen = [[0, 0], [1000, 0], [1000, 1000], [0, 1000]]
+        current = {corner: [113, 80] for corner in ("lt", "rt", "rb", "lb")}
+        with self.assertRaisesRegex(ValueError, "outside"):
+            solve_insets(projection, screen, current)
+
     def test_detects_projection_instead_of_duplicate_frame_edge(self):
         image = np.full((900, 1400, 3), 20, np.uint8)
         screen = np.array([[160, 100], [1240, 140], [1180, 800], [200, 760]], np.int32)
