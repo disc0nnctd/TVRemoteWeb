@@ -211,6 +211,11 @@
   .ks-layer button.on { box-shadow:inset 0 0 0 2px currentColor; }
   .ks-layer [data-ks-layer="screen"].on { color:#8edba5; background:#183224; }
   .ks-layer [data-ks-layer="projection"].on { color:#9dccff; background:#172c45; }
+  .ks-lens { display:flex; align-items:center; gap:8px; min-height:44px; margin-top:5px;
+             color:var(--muted); font-size:11px; cursor:pointer; }
+  .ks-lens input { width:18px; height:18px; accent-color:var(--acc); }
+  .ks-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+  .ks-presets button { min-width:0; min-height:44px; padding:8px 4px; font-size:11px; }
 
   /* ---------- bottom tab bar ---------- */
   nav {
@@ -414,15 +419,17 @@
     </div>
     <div class="card">
       <div class="ks-step"><span class="ks-num">1</span><div class="ks-title">Photograph both rectangles</div></div>
-      <p class="ks-copy">Show the full inner edge of the physical screen and all four projected corners. Keep this same photo for the preview below.</p>
-      <div class="ks-actions">
-        <button id="ks-grid-open" class="acc">Show correction grid</button>
-        <button id="ks-grid-close" class="ghost">Close grid</button>
+      <p class="ks-copy">Choose the largest preset where all four blue corners are clearly visible, then take one photo. A physical screen/frame may be absent.</p>
+      <div class="ks-presets" role="group" aria-label="Detection image size">
+        <button data-ks-calibrate="75">1 · 75%</button>
+        <button data-ks-calibrate="65" class="acc">2 · 65%</button>
+        <button data-ks-calibrate="55">3 · 55%</button>
       </div>
       <div class="ks-actions" style="margin-top:8px">
         <label class="file-btn" for="ks-photo">Choose same photo</label>
-        <button id="ks-copy-prompt">Copy ChatGPT prompt</button>
+        <button id="ks-grid-close" class="ghost">Close grid</button>
       </div>
+      <button id="ks-copy-prompt" style="width:100%;margin-top:8px">Copy ChatGPT prompt</button>
       <input class="visually-hidden" id="ks-photo" type="file" accept="image/jpeg,image/png,image/webp">
       <details class="ks-prompt">
         <summary>View prompt before copying</summary>
@@ -432,7 +439,7 @@
 
     <div class="card">
       <div class="ks-step"><span class="ks-num">2</span><div class="ks-title">Adjust points or paste JSON</div></div>
-      <p class="ks-copy">Choosing a photo creates draggable points automatically. Select which outline to edit, then drag its LT, RT, RB and LB nodes onto the matching corners.</p>
+      <p class="ks-copy">Auto-detect finds the blue projected image in the phone browser. A physical screen is optional: place the four green points manually when no reliable frame exists.</p>
       <div class="ks-layer" role="group" aria-label="Editable keystone outline">
         <button data-ks-layer="screen" class="on">Edit physical screen</button>
         <button data-ks-layer="projection">Edit projection</button>
@@ -443,8 +450,13 @@
         <textarea id="ks-json" spellcheck="false" autocomplete="off" placeholder='{"coordinate_space":1000,"screen":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]},"projection":{"lt":[…],"rt":[…],"rb":[…],"lb":[…]}}'></textarea>
       </details>
       <div class="ks-actions" style="margin-top:8px">
-        <button id="ks-preview-btn" class="acc">Use pasted JSON</button>
+        <button id="ks-detect" class="acc" disabled>Detect blue projection</button>
         <button id="ks-reset-points" class="ghost">Reset manual points</button>
+      </div>
+      <label class="ks-lens"><input id="ks-lens" type="checkbox" checked> Precision lens while dragging</label>
+      <div class="ks-actions" style="margin-top:8px">
+        <button id="ks-calculate" class="acc2" disabled>Calculate reviewed fit</button>
+        <button id="ks-preview-btn">Use pasted JSON</button>
       </div>
       <div class="ks-preview" id="ks-preview">
         <div class="ks-placeholder" id="ks-placeholder">Choose the same photo and paste its annotation to review both outlines.</div>
@@ -472,7 +484,8 @@
   <section class="tabpane" data-tab="tools">
     <div class="card">
       <div class="sec">Picture controls <span class="note">— Beem hardware PQ</span></div>
-      <p class="advanced-note">Changes affect the live projector image. Adjust locally, review the values, then apply them together. One rollback snapshot is saved first.</p>
+      <p class="advanced-note">Enable live preview to see each change after a short pause, or leave it off to stage values. The first live change saves one rollback snapshot.</p>
+      <label class="ks-lens"><input id="pq-live" type="checkbox"> Live preview picture changes</label>
       <div class="setting-list" id="picture-settings">
         <div class="setting"><div class="setting-head"><label for="pq-brightness">Brightness</label><output data-pq-out="brightness">—</output></div><input id="pq-brightness" data-pq="brightness" type="range" min="0" max="100" step="1"></div>
         <div class="setting"><div class="setting-head"><label for="pq-contrast">Contrast</label><output data-pq-out="contrast">—</output></div><input id="pq-contrast" data-pq="contrast" type="range" min="0" max="100" step="1"></div>
@@ -850,6 +863,7 @@ document.getElementById('apps-refresh').addEventListener('click', pullApps);
 /* ---------------- advanced settings ---------------- */
 let settingsLoaded = false;
 let settingsSnapshot = null;
+let pqLiveTimer = null;
 const settingsStatus = document.getElementById('settings-status');
 const pqInputs = [...document.querySelectorAll('[data-pq]')];
 
@@ -906,7 +920,34 @@ pqInputs.filter(input => input.type === 'range').forEach(input => {
   input.addEventListener('input', () => {
     const output = document.querySelector('[data-pq-out="' + input.dataset.pq + '"]');
     if (output) output.textContent = input.value;
+    queuePicturePreview(input);
   });
+});
+
+const pqLive = document.getElementById('pq-live');
+pqLive.checked = localStorage.getItem('pqLive') === '1';
+pqLive.addEventListener('change', () => {
+  localStorage.setItem('pqLive', pqLive.checked ? '1' : '0');
+  setSettingsStatus(pqLive.checked ? 'Live preview enabled. Changes apply after a short pause.' : 'Live preview off. Changes are staged until Apply.', 'ok');
+});
+
+function queuePicturePreview(input) {
+  if (!pqLive.checked) return;
+  if (pqLiveTimer) clearTimeout(pqLiveTimer);
+  pqLiveTimer = setTimeout(async () => {
+    pqLiveTimer = null;
+    try {
+      const result = await settingsRequest('picture_preview', {
+        name:input.dataset.pq, value:input.value, confirmation:'PREVIEW'
+      }, 'POST');
+      document.getElementById('pq-restore').disabled = !result.picture_backup_available;
+      setSettingsStatus('Live preview: ' + input.dataset.pq.replaceAll('_', ' ') + ' = ' + input.value + '. Restore previous remains available.', 'ok');
+    } catch (error) { setSettingsStatus('Live preview failed: ' + error.message, 'err'); }
+  }, input.type === 'range' ? 240 : 40);
+}
+
+pqInputs.filter(input => input.tagName === 'SELECT').forEach(input => {
+  input.addEventListener('change', () => queuePicturePreview(input));
 });
 
 document.getElementById('pq-apply').addEventListener('click', async () => {
@@ -1069,6 +1110,7 @@ document.getElementById('show-logcat').addEventListener('click', async () => {
 let keystoneLoaded = false;
 let ksCurrent = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
 let ksLayer = 'screen', ksDragging = null;
+let ksReviewed = {screen:new Set(), projection:new Set()};
 const ksPrompt = document.getElementById('ks-prompt');
 const ksJson = document.getElementById('ks-json');
 const ksStatus = document.getElementById('ks-status');
@@ -1078,7 +1120,19 @@ const ksPlaceholder = document.getElementById('ks-placeholder');
 const ksValues = document.getElementById('ks-values');
 const ksApply = document.getElementById('ks-apply');
 const ksRestore = document.getElementById('ks-restore');
+const ksCalculate = document.getElementById('ks-calculate');
+const ksDetect = document.getElementById('ks-detect');
 ksPrompt.value = KeystoneGeometry.chatGptPrompt();
+
+function ksInvalidateProposal(message, kind) {
+  ksProposal = null;
+  ksApply.disabled = true;
+  ksValues.classList.remove('on');
+  document.getElementById('ks-proposed').textContent = '—';
+  const ready = ksReviewed.screen.size === 4 && ksReviewed.projection.size === 4;
+  ksCalculate.disabled = !ready;
+  if (message) ksSetStatus(message, kind);
+}
 
 function ksSetStatus(message, kind) {
   [ksStatus, ksQuickStatus].forEach(status => {
@@ -1116,7 +1170,7 @@ async function pullKeystoneStatus() {
     ksRestore.disabled = !result.backup_available;
     ksSetStatus('Projector ready. Current values loaded.', 'ok');
     document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
-    if (ksAnnotation) updateKeystoneProposal('Projector ready. Drag points or apply the reviewed proposal.');
+    if (ksAnnotation) ksInvalidateProposal('Projector state refreshed. Review both outlines, then calculate again.');
   } catch (error) {
     ksSetStatus('Could not read projector state: ' + error.message, 'err');
   }
@@ -1146,8 +1200,8 @@ document.getElementById('ks-photo').addEventListener('change', event => {
   const image = new Image();
   image.onload = () => {
     ksImage = image;
-    if (!ksAnnotation) resetManualPoints();
-    else { drawKeystoneOverlay(); updateKeystoneProposal('Photo loaded. Drag points or apply the valid proposal.'); }
+    ksDetect.disabled = false;
+    resetManualPoints();
   };
   image.onerror = () => ksSetStatus('The selected image could not be decoded.', 'err');
   image.src = ksImageUrl;
@@ -1183,6 +1237,28 @@ function drawKeystoneOverlay() {
   ksCanvas.hidden = false; ksCanvas.classList.add('editing'); ksPlaceholder.hidden = true;
 }
 
+function drawKeystoneLoupe(point) {
+  if (!ksImage || !point || !document.getElementById('ks-lens').checked) return;
+  const ctx = ksCanvas.getContext('2d');
+  const radius = Math.max(34, Math.min(72, ksCanvas.width * .095));
+  const cx = Math.max(radius + 5, Math.min(ksCanvas.width - radius - 5, point[0] * ksCanvas.width));
+  let cy = point[1] * ksCanvas.height - radius * 1.65;
+  if (cy < radius + 5) cy = point[1] * ksCanvas.height + radius * 1.65;
+  cy = Math.max(radius + 5, Math.min(ksCanvas.height - radius - 5, cy));
+  const sourceRadius = Math.max(10, Math.min(ksImage.naturalWidth, ksImage.naturalHeight) * .025);
+  const sx = point[0] * ksImage.naturalWidth, sy = point[1] * ksImage.naturalHeight;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.clip();
+  ctx.drawImage(ksImage, sx - sourceRadius, sy - sourceRadius, sourceRadius * 2, sourceRadius * 2,
+                cx - radius, cy - radius, radius * 2, radius * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = Math.max(2, ksCanvas.width / 400);
+  ctx.beginPath(); ctx.moveTo(cx - radius, cy); ctx.lineTo(cx + radius, cy);
+  ctx.moveTo(cx, cy - radius); ctx.lineTo(cx, cy + radius); ctx.stroke();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#4c9dff'; ctx.lineWidth = Math.max(4, ksCanvas.width / 240); ctx.stroke();
+}
+
 function annotationObject(annotation) {
   const result = {coordinate_space:1000, screen:{}, projection:{}};
   for (const layer of ['screen','projection']) {
@@ -1201,13 +1277,17 @@ function resetManualPoints() {
     projection:{lt:[60,60],rt:[940,60],rb:[940,940],lb:[60,940]}
   });
   ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
+  ksReviewed = {screen:new Set(), projection:new Set()};
   drawKeystoneOverlay();
-  updateKeystoneProposal('Manual points ready. Drag all eight nodes onto their matching corners.');
+  ksInvalidateProposal('Manual points are placeholders. Drag all four green screen points and all four blue projection points, or auto-detect blue first.');
 }
 
 function updateKeystoneProposal(successMessage) {
   try {
     if (!ksCurrent) throw new Error('projector state is not loaded');
+    if (ksReviewed.screen.size !== 4 || ksReviewed.projection.size !== 4) {
+      throw new Error('review all four green and all four blue corners first');
+    }
     ksAnnotation = KeystoneGeometry.parseAnnotation(annotationObject(ksAnnotation));
     ksProposal = KeystoneGeometry.solveInsets(ksAnnotation, ksCurrent);
     ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
@@ -1249,20 +1329,28 @@ ksCanvas.addEventListener('pointerdown', event => {
   const hitRadius = 38 / Math.max(ksCanvas.getBoundingClientRect().width, 1);
   if (nearest < 0 || distance > hitRadius) return;
   ksDragging = {layer:ksLayer, index:nearest};
-  ksCanvas.setPointerCapture(event.pointerId); event.preventDefault();
+  try { ksCanvas.setPointerCapture(event.pointerId); } catch (error) {}
+  event.preventDefault();
 });
 
 ksCanvas.addEventListener('pointermove', event => {
   if (!ksDragging || !ksAnnotation) return;
-  ksAnnotation[ksDragging.layer][ksDragging.index] = canvasPoint(event);
-  drawKeystoneOverlay(); event.preventDefault();
+  const point = canvasPoint(event);
+  ksAnnotation[ksDragging.layer][ksDragging.index] = point;
+  drawKeystoneOverlay(); drawKeystoneLoupe(point); event.preventDefault();
 });
 
 function finishPointDrag(event) {
   if (!ksDragging) return;
+  const reviewed = ksDragging;
   ksDragging = null;
   try { ksCanvas.releasePointerCapture(event.pointerId); } catch (error) {}
-  updateKeystoneProposal('Manual points updated. Check both outlines before applying.');
+  ksReviewed[reviewed.layer].add(reviewed.index);
+  ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
+  drawKeystoneOverlay();
+  const green = ksReviewed.screen.size, blue = ksReviewed.projection.size;
+  ksInvalidateProposal('Corner saved. Reviewed: green ' + green + '/4 · blue ' + blue + '/4' +
+    (green === 4 && blue === 4 ? '. Tap Calculate reviewed fit.' : '.'));
 }
 ksCanvas.addEventListener('pointerup', finishPointDrag);
 ksCanvas.addEventListener('pointercancel', finishPointDrag);
@@ -1274,6 +1362,7 @@ document.getElementById('ks-preview-btn').addEventListener('click', () => {
     const raw = JSON.parse(ksJson.value);
     if (raw.error) throw new Error(String(raw.error));
     ksAnnotation = KeystoneGeometry.parseAnnotation(raw);
+    ksReviewed = {screen:new Set([0,1,2,3]), projection:new Set([0,1,2,3])};
     drawKeystoneOverlay();
     updateKeystoneProposal('ChatGPT annotation loaded. Drag any inaccurate node before applying.');
   } catch (error) {
@@ -1283,6 +1372,37 @@ document.getElementById('ks-preview-btn').addEventListener('click', () => {
 });
 
 document.getElementById('ks-reset-points').addEventListener('click', resetManualPoints);
+ksCalculate.addEventListener('click', () => updateKeystoneProposal('Fit calculated from the reviewed corners. Check the values, then apply.'));
+
+ksDetect.addEventListener('click', () => {
+  if (!ksImage || !ksAnnotation) return;
+  ksDetect.disabled = true;
+  ksSetStatus('Detecting the blue projection on this phone…');
+  requestAnimationFrame(() => setTimeout(() => {
+    const work = document.createElement('canvas');
+    try {
+      const scale = Math.min(1, 720 / Math.max(ksImage.naturalWidth, ksImage.naturalHeight));
+      work.width = Math.max(32, Math.round(ksImage.naturalWidth * scale));
+      work.height = Math.max(32, Math.round(ksImage.naturalHeight * scale));
+      const context = work.getContext('2d', {willReadFrequently:true});
+      context.drawImage(ksImage, 0, 0, work.width, work.height);
+      const pixels = context.getImageData(0, 0, work.width, work.height);
+      const detected = KeystoneGeometry.detectProjectionEdges(pixels.data, work.width, work.height);
+      ksAnnotation.projection = detected.projection;
+      ksReviewed.projection = new Set([0,1,2,3]);
+      ksJson.value = JSON.stringify(annotationObject(ksAnnotation));
+      drawKeystoneOverlay();
+      const green = ksReviewed.screen.size;
+      ksInvalidateProposal('Blue projection detected (' + Math.round(detected.confidence * 100) +
+        '% confidence). Now place/review the four green target corners' + (green ? ' (' + green + '/4 done).' : '.'));
+    } catch (error) {
+      ksInvalidateProposal('Auto-detect could not finish: ' + error.message, 'err');
+    } finally {
+      work.width = 0; work.height = 0;
+      ksDetect.disabled = false;
+    }
+  }, 0));
+});
 
 ksApply.addEventListener('click', async () => {
   if (!ksProposal) return;
@@ -1333,10 +1453,18 @@ document.getElementById('ks-reset').addEventListener('click', async () => {
   } catch (error) { ksSetStatus('Reset failed: ' + error.message, 'err'); }
 });
 
-document.getElementById('ks-grid-open').addEventListener('click', async () => {
-  try { const result = await ksRequest('view_open'); ksSetStatus(result.detail, 'ok'); }
-  catch (error) { ksSetStatus('Grid failed: ' + error.message, 'err'); }
-});
+document.querySelectorAll('[data-ks-calibrate]').forEach(button => button.addEventListener('click', async () => {
+  const size = button.dataset.ksCalibrate;
+  if (!confirm('Temporarily show a centered ' + size + '% image for edge detection?\n\nYour original alignment is preserved for rollback.')) return;
+  try {
+    const result = await ksRequest('calibrate', {size, confirmation:'CALIBRATE'});
+    ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null; ksApply.disabled = true;
+    ksZoom.value = size; ksZoomValue.textContent = size + '%';
+    document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
+    const grid = await ksRequest('view_open');
+    ksSetStatus(result.detail + '. ' + grid.detail + '. Take a photo containing all four blue edges.', 'ok');
+  } catch (error) { ksSetStatus('Detection setup failed: ' + error.message, 'err'); }
+}));
 document.getElementById('ks-grid-close').addEventListener('click', async () => {
   try { const result = await ksRequest('view_close'); ksSetStatus(result.detail, 'ok'); }
   catch (error) { ksSetStatus('Could not close grid: ' + error.message, 'err'); }

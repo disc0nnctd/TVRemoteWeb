@@ -166,5 +166,89 @@
     ].join('\n');
   }
 
-  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, chatGptPrompt };
+  function regression(samples, dependentIndex) {
+    if (samples.length < 8) fail('not enough edge samples');
+    let sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (const sample of samples) {
+      const x = sample[1 - dependentIndex], y = sample[dependentIndex];
+      sx += x; sy += y; sxx += x * x; sxy += x * y;
+    }
+    const n = samples.length;
+    const divisor = n * sxx - sx * sx;
+    if (Math.abs(divisor) < 1e-8) fail('edge samples are degenerate');
+    const slope = (n * sxy - sx * sy) / divisor;
+    return [slope, (sy - slope * sx) / n];
+  }
+
+  function lineIntersection(vertical, horizontal) {
+    // x = vertical[0] * y + vertical[1], y = horizontal[0] * x + horizontal[1]
+    const divisor = 1 - vertical[0] * horizontal[0];
+    if (Math.abs(divisor) < 1e-6) fail('detected edges do not form stable corners');
+    const y = (horizontal[0] * vertical[1] + horizontal[1]) / divisor;
+    return [vertical[0] * y + vertical[1], y];
+  }
+
+  function detectProjectionEdges(rgba, width, height) {
+    if (!rgba || rgba.length !== width * height * 4 || width < 32 || height < 32) {
+      fail('invalid image pixels');
+    }
+    const rowMin = new Int32Array(height); rowMin.fill(width);
+    const rowMax = new Int32Array(height); rowMax.fill(-1);
+    const rowCount = new Int32Array(height);
+    const colMin = new Int32Array(width); colMin.fill(height);
+    const colMax = new Int32Array(width); colMax.fill(-1);
+    const colCount = new Int32Array(width);
+    let hits = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const offset = (y * width + x) * 4;
+        const r = rgba[offset], g = rgba[offset + 1], b = rgba[offset + 2];
+        // The Beem correction view is cyan/blue. Restricting detection to that
+        // signal avoids mistaking a wall, frame, doorway, or shadow for light.
+        if (b < 80 || g < 55 || b - r < 24 || g - r < 8) continue;
+        hits++;
+        rowCount[y]++; colCount[x]++;
+        if (x < rowMin[y]) rowMin[y] = x;
+        if (x > rowMax[y]) rowMax[y] = x;
+        if (y < colMin[x]) colMin[x] = y;
+        if (y > colMax[x]) colMax[x] = y;
+      }
+    }
+    const coverage = hits / (width * height);
+    if (coverage < 0.012) fail('blue correction projection was not found; show the grid, dim the room, and retake the photo');
+
+    let firstRow = height, lastRow = -1, firstCol = width, lastCol = -1;
+    const rowNeed = Math.max(5, Math.round(width * 0.015));
+    const colNeed = Math.max(5, Math.round(height * 0.015));
+    for (let y = 0; y < height; y++) if (rowCount[y] >= rowNeed) { firstRow = Math.min(firstRow, y); lastRow = y; }
+    for (let x = 0; x < width; x++) if (colCount[x] >= colNeed) { firstCol = Math.min(firstCol, x); lastCol = x; }
+    if (lastRow - firstRow < height * 0.08 || lastCol - firstCol < width * 0.08) {
+      fail('detected blue area is too small for reliable corners');
+    }
+
+    const left = [], right = [], top = [], bottom = [];
+    const rowTrim = Math.max(2, Math.round((lastRow - firstRow) * 0.06));
+    const colTrim = Math.max(2, Math.round((lastCol - firstCol) * 0.06));
+    for (let y = firstRow + rowTrim; y <= lastRow - rowTrim; y++) {
+      if (rowCount[y] >= rowNeed) { left.push([rowMin[y], y]); right.push([rowMax[y], y]); }
+    }
+    for (let x = firstCol + colTrim; x <= lastCol - colTrim; x++) {
+      if (colCount[x] >= colNeed) { top.push([x, colMin[x]]); bottom.push([x, colMax[x]]); }
+    }
+    const leftLine = regression(left, 0), rightLine = regression(right, 0);
+    const topLine = regression(top, 1), bottomLine = regression(bottom, 1);
+    const pixels = [
+      lineIntersection(leftLine, topLine), lineIntersection(rightLine, topLine),
+      lineIntersection(rightLine, bottomLine), lineIntersection(leftLine, bottomLine)
+    ];
+    const projection = pixels.map(([x, y]) => [x / width, y / height]);
+    validateQuad(projection, 'detected projection');
+    if (projection.some(pair => pair.some(v => v < -0.04 || v > 1.04))) {
+      fail('a projected corner is outside the photo; retake with all four blue edges visible');
+    }
+    const confidence = Math.max(0.35, Math.min(0.96, 0.45 + Math.min(coverage, 0.25) * 1.8));
+    return {projection: projection.map(pair => pair.map(v => Math.max(0, Math.min(1, v)))), confidence};
+  }
+
+  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, chatGptPrompt, detectProjectionEdges };
 });

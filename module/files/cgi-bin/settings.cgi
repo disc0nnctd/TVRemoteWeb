@@ -6,6 +6,7 @@ TOKEN_FILE="/data/adb/tvremoteweb/token"
 PQCLI="/data/adb/modules/tvremoteweb/files/pqcli.dex"
 PQAPK="/product/app/HtcSettingsBlue/HtcSettingsBlue.apk"
 PQ_BACKUP="/data/adb/tvremoteweb/picture-backup.conf"
+PQ_LIVE_BACKUP="/data/adb/tvremoteweb/picture-live-backup.conf"
 
 PARAMS="${QUERY_STRING:-}"
 if [ "${REQUEST_METHOD:-GET}" = "POST" ]; then
@@ -226,6 +227,32 @@ case "$action" in
     settings put global animator_duration_scale "$d_animation" || respond_error "animation update failed"
     emit_status "device settings applied"
     ;;
+  picture_preview)
+    [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "picture preview requires POST"
+    [ "$(get_param confirmation 2>/dev/null || true)" = "PREVIEW" ] || respond_error "picture preview requires PREVIEW confirmation"
+    name="$(get_param name 2>/dev/null || true)"
+    value="$(get_param value 2>/dev/null || true)"
+    case "$name" in
+      brightness) channel=1; max=100 ;; contrast) channel=2; max=100 ;;
+      saturation) channel=3; max=100 ;; hue) channel=4; max=100 ;;
+      sharpness) channel=5; max=100 ;; backlight) channel=6; max=100 ;;
+      tnr) channel=7; max=3 ;; snr) channel=8; max=3 ;; dci) channel=9; max=3 ;;
+      black_extension) channel=10; max=3 ;; dynamic_backlight) channel=11; max=1 ;;
+      color_temperature) channel=12; max=2 ;; gamma) channel=13; max=4 ;;
+      *) respond_error "unknown picture preview control" ;;
+    esac
+    valid_range "$value" "$max" || respond_error "picture preview value is invalid"
+    pq_dump="$(pq_status 2>/dev/null || true)"
+    valid_pq_dump "$pq_dump" || respond_error "vendor picture service unavailable"
+    live_before="$(cat "$PQ_LIVE_BACKUP" 2>/dev/null)"
+    if ! valid_pq_dump "$live_before"; then
+      printf '%s\n' "$pq_dump" > "$PQ_LIVE_BACKUP" || respond_error "could not save live preview baseline"
+      printf '%s\n' "$pq_dump" > "$PQ_BACKUP" || respond_error "could not save picture backup"
+      chmod 600 "$PQ_LIVE_BACKUP" "$PQ_BACKUP" 2>/dev/null || true
+    fi
+    [ "$(pq_get_from "$pq_dump" "$channel")" = "$value" ] || pq_set "$channel" "$value" || respond_error "vendor picture preview failed"
+    emit_status "live picture preview updated"
+    ;;
   picture_apply)
     [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "picture changes require POST"
     [ "$(get_param confirmation 2>/dev/null || true)" = "APPLY" ] || respond_error "picture changes require APPLY confirmation"
@@ -251,7 +278,9 @@ case "$action" in
     done
     pq_dump="$(pq_status 2>/dev/null || true)"
     valid_pq_dump "$pq_dump" || respond_error "vendor picture service unavailable"
-    printf '%s\n' "$pq_dump" > "$PQ_BACKUP" || respond_error "could not save picture backup"
+    live_before="$(cat "$PQ_LIVE_BACKUP" 2>/dev/null)"
+    if valid_pq_dump "$live_before"; then backup_dump="$live_before"; else backup_dump="$pq_dump"; fi
+    printf '%s\n' "$backup_dump" > "$PQ_BACKUP" || respond_error "could not save picture backup"
     chmod 600 "$PQ_BACKUP" 2>/dev/null || true
     for spec in "1:$p_brightness" "2:$p_contrast" "3:$p_saturation" "4:$p_hue" \
                 "5:$p_sharpness" "6:$p_backlight" "7:$p_tnr" "8:$p_snr" \
@@ -260,6 +289,7 @@ case "$action" in
       [ "$(pq_get_from "$pq_dump" "$1")" = "$2" ] && continue
       pq_set "$1" "$2" || respond_error "vendor picture update failed"
     done
+    rm -f "$PQ_LIVE_BACKUP"
     emit_status "picture settings applied"
     ;;
   picture_restore)
@@ -275,6 +305,7 @@ case "$action" in
       [ "$(pq_get_from "$current" "$channel")" = "$restore_value" ] && continue
       pq_set "$channel" "$restore_value" || respond_error "picture restore failed"
     done
+    rm -f "$PQ_LIVE_BACKUP"
     emit_status "previous picture settings restored"
     ;;
   *) respond_error "unknown action" ;;

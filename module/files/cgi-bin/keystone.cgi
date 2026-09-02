@@ -8,6 +8,7 @@ TOKEN_FILE="$STATE/token"
 BACKUP_FILE="$STATE/keystone-backup.csv"
 HISTORY_FILE="$STATE/keystone-history.log"
 VIEW_FILE="$STATE/keystone-view.properties"
+CALIBRATION_FILE="$STATE/keystone-calibration-backup.csv"
 CORRECTION_ACTIVITY="com.htc.htcsettings/com.htc.activity.CorrectionActivity"
 
 PARAMS="${QUERY_STRING:-}"
@@ -122,7 +123,15 @@ case "$action" in
     [ "$(get_param confirmation 2>/dev/null || true)" = "APPLY" ] || respond_error "explicit APPLY confirmation required"
     proposal="$(get_param values 2>/dev/null || true)"
     valid_csv "$proposal" || respond_error "values must be eight integers in firmware range 0-500"
-    save_backup "$proposal" keystone || respond_error "could not save rollback values"
+    calibration_before="$(cat "$CALIBRATION_FILE" 2>/dev/null)"
+    if valid_csv "$calibration_before"; then
+      printf '%s\n' "$calibration_before" > "$BACKUP_FILE" || respond_error "could not preserve pre-calibration rollback values"
+      chmod 600 "$BACKUP_FILE"
+      printf '%s operation=keystone-calibrated before=%s calibration=%s after=%s\n' "$(date +%s)" "$calibration_before" "$current" "$proposal" >> "$HISTORY_FILE"
+      rm -f "$CALIBRATION_FILE"
+    else
+      save_backup "$proposal" keystone || respond_error "could not save rollback values"
+    fi
     apply_csv "$proposal" || respond_error "SurfaceFlinger rejected the correction"
     json_headers
     printf '{"status":"ok","detail":"keystone applied","current":'; csv_json "$proposal"; printf '}\n'
@@ -134,8 +143,28 @@ case "$action" in
     reset_values="0,0,0,0,0,0,0,0"
     save_backup "$reset_values" reset || respond_error "could not save rollback values"
     apply_csv "$reset_values" || respond_error "SurfaceFlinger rejected the reset"
+    rm -f "$CALIBRATION_FILE"
     json_headers
     printf '{"status":"ok","detail":"keystone and zoom reset to full size","current":'; csv_json "$reset_values"; printf '}\n'
+    ;;
+  calibrate)
+    [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "calibrate requires POST"
+    [ "$supported" = true ] || respond_error "four-corner firmware interface not detected"
+    [ "$(get_param confirmation 2>/dev/null || true)" = "CALIBRATE" ] || respond_error "explicit CALIBRATE confirmation required"
+    size="$(get_param size 2>/dev/null || true)"
+    case "$size" in 55|65|75) ;; *) respond_error "calibration size must be 55, 65, or 75 percent" ;; esac
+    inset="$("$BB" awk -v size="$size" 'BEGIN { printf "%d", ((100 - size) * 2.5) + 0.5 }')"
+    calibration_values="$inset,$inset,$inset,$inset,$inset,$inset,$inset,$inset"
+    original="$(cat "$CALIBRATION_FILE" 2>/dev/null)"
+    if ! valid_csv "$original"; then original="$current"; fi
+    printf '%s\n' "$original" > "$CALIBRATION_FILE" || respond_error "could not preserve pre-calibration values"
+    chmod 600 "$CALIBRATION_FILE"
+    printf '%s\n' "$original" > "$BACKUP_FILE" || respond_error "could not preserve rollback values"
+    chmod 600 "$BACKUP_FILE"
+    printf '%s operation=calibration-%s before=%s after=%s\n' "$(date +%s)" "$size" "$original" "$calibration_values" >> "$HISTORY_FILE"
+    apply_csv "$calibration_values" || respond_error "SurfaceFlinger rejected the calibration size"
+    json_headers
+    printf '{"status":"ok","detail":"%s%% centered calibration image active","current":' "$size"; csv_json "$calibration_values"; printf '}\n'
     ;;
   zoom)
     [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "zoom requires POST"
@@ -149,6 +178,7 @@ case "$action" in
     zoom_values="$inset,$inset,$inset,$inset,$inset,$inset,$inset,$inset"
     save_backup "$zoom_values" "zoom-${size}" || respond_error "could not save rollback values"
     apply_csv "$zoom_values" || respond_error "SurfaceFlinger rejected the image size"
+    rm -f "$CALIBRATION_FILE"
     json_headers
     printf '{"status":"ok","detail":"image size set to %s%%","current":' "$size"; csv_json "$zoom_values"; printf '}\n'
     ;;
@@ -158,6 +188,7 @@ case "$action" in
     previous="$(cat "$BACKUP_FILE" 2>/dev/null)"
     valid_csv "$previous" || respond_error "no valid keystone backup exists"
     apply_csv "$previous" || respond_error "SurfaceFlinger rejected the restore"
+    rm -f "$CALIBRATION_FILE"
     printf '%s restored=%s\n' "$(date +%s)" "$previous" >> "$HISTORY_FILE"
     json_headers
     printf '{"status":"ok","detail":"previous keystone restored","current":'; csv_json "$previous"; printf '}\n'
