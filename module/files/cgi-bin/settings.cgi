@@ -7,6 +7,7 @@ PQCLI="/data/adb/modules/tvremoteweb/files/pqcli.dex"
 PQAPK="/product/app/HtcSettingsBlue/HtcSettingsBlue.apk"
 PQ_BACKUP="/data/adb/tvremoteweb/picture-backup.conf"
 PQ_LIVE_BACKUP="/data/adb/tvremoteweb/picture-live-backup.conf"
+PQ_PROFILES="/data/adb/tvremoteweb/picture-profiles.conf"
 
 PARAMS="${QUERY_STRING:-}"
 if [ "${REQUEST_METHOD:-GET}" = "POST" ]; then
@@ -110,6 +111,35 @@ picture_json() {
   fi
 }
 
+valid_profile_csv() {
+  csv="$1"
+  old_ifs="$IFS"; IFS=,; set -- $csv; IFS="$old_ifs"
+  [ "$#" -eq 13 ] || return 1
+  valid_range "$1" 100 && valid_range "$2" 100 && valid_range "$3" 100 &&
+    valid_range "$4" 100 && valid_range "$5" 100 && valid_range "$6" 100 &&
+    valid_range "$7" 3 && valid_range "$8" 3 && valid_range "$9" 3 &&
+    valid_range "${10}" 3 && valid_range "${11}" 1 && valid_range "${12}" 2 &&
+    valid_range "${13}" 4
+}
+
+custom_profiles_json() {
+  printf ',"custom_profiles":{'
+  separator=""
+  for slot in custom1 custom2 custom3; do
+    csv="$(sed -n "s/^$slot=//p" "$PQ_PROFILES" 2>/dev/null | tail -n1)"
+    printf '%s"%s":' "$separator" "$slot"
+    if valid_profile_csv "$csv"; then
+      old_ifs="$IFS"; IFS=,; set -- $csv; IFS="$old_ifs"
+      printf '{"brightness":%s,"contrast":%s,"saturation":%s,"hue":%s,"sharpness":%s,"backlight":%s,"tnr":%s,"snr":%s,"dci":%s,"black_extension":%s,"dynamic_backlight":%s,"color_temperature":%s,"gamma":%s}' \
+        "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
+    else
+      printf 'null'
+    fi
+    separator=,
+  done
+  printf '}'
+}
+
 emit_status() {
   detail="${1:-settings loaded}"
   brightness="$(number_or "$(settings get system screen_brightness 2>/dev/null)" 102)"
@@ -127,6 +157,7 @@ emit_status() {
   printf '{"status":"ok","detail":"%s","values":{"brightness":%s,"screen_timeout":%s,"screensaver":%s,"stay_awake":%s,"rotation":%s,"animation":%s,"wifi_sleep_policy":%s},"picture_supported":' \
     "$detail" "$brightness" "$timeout" "$screensaver" "$stay_awake" "$rotation" "$animation" "$wifi_sleep"
   picture_json "$pq_dump"
+  custom_profiles_json
   printf '}\n'
 }
 
@@ -291,6 +322,33 @@ case "$action" in
     done
     rm -f "$PQ_LIVE_BACKUP"
     emit_status "picture settings applied"
+    ;;
+  picture_profile_save)
+    [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "profile save requires POST"
+    [ "$(get_param confirmation 2>/dev/null || true)" = "SAVE" ] || respond_error "profile save requires SAVE confirmation"
+    slot="$(get_param slot 2>/dev/null || true)"
+    case "$slot" in custom1|custom2|custom3) ;; *) respond_error "unknown custom profile slot" ;; esac
+    p_brightness="$(get_param brightness 2>/dev/null || true)"
+    p_contrast="$(get_param contrast 2>/dev/null || true)"
+    p_saturation="$(get_param saturation 2>/dev/null || true)"
+    p_hue="$(get_param hue 2>/dev/null || true)"
+    p_sharpness="$(get_param sharpness 2>/dev/null || true)"
+    p_backlight="$(get_param backlight 2>/dev/null || true)"
+    p_tnr="$(get_param tnr 2>/dev/null || true)"
+    p_snr="$(get_param snr 2>/dev/null || true)"
+    p_dci="$(get_param dci 2>/dev/null || true)"
+    p_black="$(get_param black_extension 2>/dev/null || true)"
+    p_dynamic="$(get_param dynamic_backlight 2>/dev/null || true)"
+    p_temperature="$(get_param color_temperature 2>/dev/null || true)"
+    p_gamma="$(get_param gamma 2>/dev/null || true)"
+    profile_csv="$p_brightness,$p_contrast,$p_saturation,$p_hue,$p_sharpness,$p_backlight,$p_tnr,$p_snr,$p_dci,$p_black,$p_dynamic,$p_temperature,$p_gamma"
+    valid_profile_csv "$profile_csv" || respond_error "one or more custom profile values are invalid"
+    profile_tmp="$PQ_PROFILES.tmp.$$"
+    umask 077
+    { grep -v "^$slot=" "$PQ_PROFILES" 2>/dev/null || true; printf '%s=%s\n' "$slot" "$profile_csv"; } > "$profile_tmp" || respond_error "could not stage custom profile"
+    mv "$profile_tmp" "$PQ_PROFILES" || { rm -f "$profile_tmp"; respond_error "could not save custom profile"; }
+    chmod 600 "$PQ_PROFILES" 2>/dev/null || true
+    emit_status "custom picture profile saved"
     ;;
   picture_restore)
     [ "${REQUEST_METHOD:-GET}" = "POST" ] || respond_error "restore requires POST"
