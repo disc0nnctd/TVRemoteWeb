@@ -6,7 +6,7 @@ const k = require('../module/files/keystone.js');
 
 const zero = {lt:[0,0], rt:[0,0], rb:[0,0], lb:[0,0]};
 
-test('parses ChatGPT object schema in normalized coordinate space', () => {
+test('parses corner data in normalized coordinate space', () => {
   const parsed = k.parseAnnotation({
     coordinate_space: 1000,
     screen: {lt:[100,100], rt:[900,100], rb:[900,900], lb:[100,900]},
@@ -117,4 +117,18 @@ test('screen detection falls back when no enclosing frame is visible', () => {
   for(let i=0;i<rgba.length;i+=4) rgba[i]=rgba[i+1]=rgba[i+2]=190,rgba[i+3]=255;
   const projection=[[.25,.25],[.75,.25],[.75,.75],[.25,.75]];
   assert.throws(()=>k.detectScreenEdges(rgba,width,height,projection),/no continuous physical screen frame found/);
+});
+
+test('real 55 percent calibration geometry stays near the reviewed fit', () => {
+  const annotation = {
+    screen:[[.0950507,.3137756],[.9057868,.3025204],[.9107579,.6881838],[.0752647,.6939557]],
+    projection:[[.2269373,.3402778],[.8616236,.4069444],[.8487085,.6347222],[.2509225,.6152778]]
+  };
+  const current={lt:[113,113],rt:[113,113],rb:[113,113],lb:[113,113]};
+  const expected={lt:[67,96],rt:[88,0],rb:[75,42],lb:[49,35]};
+  const proposal=k.solveInsets(annotation,current);
+  for(const corner of k.CORNERS) for(let axis=0;axis<2;axis++) {
+    assert.ok(Math.abs(proposal[corner][axis]-expected[corner][axis])<=10,
+      corner+' axis '+axis+' differs: '+proposal[corner][axis]+' vs '+expected[corner][axis]);
+  }
 });

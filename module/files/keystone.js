@@ -124,7 +124,10 @@
   }
 
   function sourceToInsets(source) {
-    const tolerance = 0.002;
+    // Phone-edge estimates can overshoot a raw edge by a few pixels. Firmware
+    // can safely clamp that small error; larger misses still indicate that the
+    // target is physically outside the optical projection.
+    const tolerance = 0.025;
     if (source.some(pair => pair.some(v => v < -tolerance || v > 1 + tolerance))) {
       fail('the physical screen extends outside the projector image; move or resize the projector first');
     }
@@ -150,97 +153,64 @@
     return [...i.lb, ...i.lt, ...i.rt, ...i.rb].join(',');
   }
 
-  function chatGptPrompt() {
-    return [
-      'Analyze the attached photo of a projected image and physical projector screen/frame.',
-      'Identify two quadrilaterals: (1) the INNER usable edge of the physical screen/frame, and (2) the visible boundary of the projected image.',
-      'Return coordinates normalized to a 0–1000 square, regardless of the photo resolution.',
-      'Use exactly LT, RT, RB, LB order. Be precise at the corners; account for perspective in the photo.',
-      'Return ONLY valid JSON—no Markdown fence, explanation, comments, or trailing commas—in this exact schema:',
-      '{',
-      '  "coordinate_space": 1000,',
-      '  "screen": {"lt":[x,y],"rt":[x,y],"rb":[x,y],"lb":[x,y]},',
-      '  "projection": {"lt":[x,y],"rt":[x,y],"rb":[x,y],"lb":[x,y]}',
-      '}',
-      'If either complete quadrilateral is not visible, return {"error":"retake photo: <reason>"} instead of guessing.'
-    ].join('\n');
-  }
-
-  function regression(samples, dependentIndex) {
-    if (samples.length < 8) fail('not enough edge samples');
-    let sx = 0, sy = 0, sxx = 0, sxy = 0;
-    for (const sample of samples) {
-      const x = sample[1 - dependentIndex], y = sample[dependentIndex];
-      sx += x; sy += y; sxx += x * x; sxy += x * y;
-    }
-    const n = samples.length;
-    const divisor = n * sxx - sx * sx;
-    if (Math.abs(divisor) < 1e-8) fail('edge samples are degenerate');
-    const slope = (n * sxy - sx * sy) / divisor;
-    return [slope, (sy - slope * sx) / n];
-  }
-
-  function lineIntersection(vertical, horizontal) {
-    // x = vertical[0] * y + vertical[1], y = horizontal[0] * x + horizontal[1]
-    const divisor = 1 - vertical[0] * horizontal[0];
-    if (Math.abs(divisor) < 1e-6) fail('detected edges do not form stable corners');
-    const y = (horizontal[0] * vertical[1] + horizontal[1]) / divisor;
-    return [vertical[0] * y + vertical[1], y];
-  }
-
   function detectProjectionEdges(rgba, width, height) {
     if (!rgba || rgba.length !== width * height * 4 || width < 32 || height < 32) {
       fail('invalid image pixels');
     }
-    const rowMin = new Int32Array(height); rowMin.fill(width);
-    const rowMax = new Int32Array(height); rowMax.fill(-1);
-    const rowCount = new Int32Array(height);
-    const colMin = new Int32Array(width); colMin.fill(height);
-    const colMax = new Int32Array(width); colMax.fill(-1);
-    const colCount = new Int32Array(width);
-    let hits = 0;
+    const mask = new Uint8Array(width * height);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const offset = (y * width + x) * 4;
         const r = rgba[offset], g = rgba[offset + 1], b = rgba[offset + 2];
         // The Beem correction view is cyan/blue. Restricting detection to that
         // signal avoids mistaking a wall, frame, doorway, or shadow for light.
-        if (b < 80 || g < 55 || b - r < 24 || g - r < 8) continue;
-        hits++;
-        rowCount[y]++; colCount[x]++;
-        if (x < rowMin[y]) rowMin[y] = x;
-        if (x > rowMax[y]) rowMax[y] = x;
-        if (y < colMin[x]) colMin[x] = y;
-        if (y > colMax[x]) colMax[x] = y;
+        if (b >= 105 && g >= 70 && b - r >= 32 && g - r >= 18) mask[y * width + x] = 1;
       }
     }
-    const coverage = hits / (width * height);
+    // Keep one coherent, strongly cyan region. A badly aimed projector can
+    // cast a much larger dim blue spill on the wall; pooling every blue pixel
+    // makes that spill drag the fitted corners to the photo boundary.
+    const labels = new Int32Array(width * height);
+    const queue = new Int32Array(width * height);
+    let nextLabel = 0, bestLabel = 0, bestScore = 0, bestCount = 0;
+    for (let start = 0; start < mask.length; start++) {
+      if (!mask[start] || labels[start]) continue;
+      const label = ++nextLabel;
+      let head = 0, tail = 0, count = 0, strength = 0;
+      queue[tail++] = start; labels[start] = label;
+      while (head < tail) {
+        const index = queue[head++], x = index % width, y = Math.floor(index / width), offset = index * 4;
+        count++;
+        strength += (rgba[offset + 2] - rgba[offset]) + (rgba[offset + 1] - rgba[offset]) * .45;
+        const neighbors = [index - 1, index + 1, index - width, index + width];
+        for (let n = 0; n < 4; n++) {
+          const candidate = neighbors[n];
+          if (candidate < 0 || candidate >= mask.length || !mask[candidate] || labels[candidate]) continue;
+          if ((n === 0 && x === 0) || (n === 1 && x === width - 1)) continue;
+          labels[candidate] = label; queue[tail++] = candidate;
+        }
+      }
+      const score = count * (strength / count);
+      if (count >= width * height * .004 && score > bestScore) {
+        bestLabel = label; bestScore = score; bestCount = count;
+      }
+    }
+    if (!bestLabel) fail('blue correction projection was not found; show the grid, dim the room, and retake the photo');
+    const coverage = bestCount / (width * height);
     if (coverage < 0.012) fail('blue correction projection was not found; show the grid, dim the room, and retake the photo');
-
-    let firstRow = height, lastRow = -1, firstCol = width, lastCol = -1;
-    const rowNeed = Math.max(5, Math.round(width * 0.015));
-    const colNeed = Math.max(5, Math.round(height * 0.015));
-    for (let y = 0; y < height; y++) if (rowCount[y] >= rowNeed) { firstRow = Math.min(firstRow, y); lastRow = y; }
-    for (let x = 0; x < width; x++) if (colCount[x] >= colNeed) { firstCol = Math.min(firstCol, x); lastCol = x; }
-    if (lastRow - firstRow < height * 0.08 || lastCol - firstCol < width * 0.08) {
-      fail('detected blue area is too small for reliable corners');
+    let minX = width, maxX = -1, minY = height, maxY = -1;
+    let extrema = [Infinity, -Infinity, -Infinity, Infinity];
+    const pixels = [[0,0],[0,0],[0,0],[0,0]];
+    for (let index = 0; index < labels.length; index++) {
+      if (labels[index] !== bestLabel) continue;
+      const x = index % width, y = Math.floor(index / width), sum = x + y, difference = x - y;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      if (sum < extrema[0]) { extrema[0] = sum; pixels[0] = [x,y]; }
+      if (difference > extrema[1]) { extrema[1] = difference; pixels[1] = [x,y]; }
+      if (sum > extrema[2]) { extrema[2] = sum; pixels[2] = [x,y]; }
+      if (difference < extrema[3]) { extrema[3] = difference; pixels[3] = [x,y]; }
     }
-
-    const left = [], right = [], top = [], bottom = [];
-    const rowTrim = Math.max(2, Math.round((lastRow - firstRow) * 0.06));
-    const colTrim = Math.max(2, Math.round((lastCol - firstCol) * 0.06));
-    for (let y = firstRow + rowTrim; y <= lastRow - rowTrim; y++) {
-      if (rowCount[y] >= rowNeed) { left.push([rowMin[y], y]); right.push([rowMax[y], y]); }
-    }
-    for (let x = firstCol + colTrim; x <= lastCol - colTrim; x++) {
-      if (colCount[x] >= colNeed) { top.push([x, colMin[x]]); bottom.push([x, colMax[x]]); }
-    }
-    const leftLine = regression(left, 0), rightLine = regression(right, 0);
-    const topLine = regression(top, 1), bottomLine = regression(bottom, 1);
-    const pixels = [
-      lineIntersection(leftLine, topLine), lineIntersection(rightLine, topLine),
-      lineIntersection(rightLine, bottomLine), lineIntersection(leftLine, bottomLine)
-    ];
+    if (maxY - minY < height * .08 || maxX - minX < width * .08) fail('detected blue area is too small for reliable corners');
     const projection = pixels.map(([x, y]) => [x / width, y / height]);
     validateQuad(projection, 'detected projection');
     if (projection.some(pair => pair.some(v => v < -0.04 || v > 1.04))) {
@@ -356,5 +326,5 @@
     return {screen:screen.map(pair => pair.map(v => Math.max(0, Math.min(1, v)))), confidence};
   }
 
-  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, chatGptPrompt, detectProjectionEdges, detectScreenEdges };
+  return { CORNERS, parseAnnotation, solveInsets, firmwareCsv, detectProjectionEdges, detectScreenEdges };
 });

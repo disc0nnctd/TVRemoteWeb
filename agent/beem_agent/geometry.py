@@ -47,7 +47,9 @@ def source_quad_to_insets(source: np.ndarray) -> dict[str, list[int]]:
     source = np.asarray(source, dtype=np.float64)
     if source.shape != (4, 2):
         raise ValueError("source quad must be LT, RT, RB, LB")
-    if np.any(source < -0.002) or np.any(source > 1.002):
+    # Allow small phone-photo edge-estimation overshoot and clamp it below.
+    # Larger misses still mean the target lies outside the raw projection.
+    if np.any(source < -0.025) or np.any(source > 1.025):
         raise ValueError("target extends outside the projector's uncorrected image; move or resize the projector")
     source = np.clip(source, 0.0, 1.0)
     lt, rt, rb, lb = source
