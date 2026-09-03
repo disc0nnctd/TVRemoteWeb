@@ -35,6 +35,9 @@ pairing dance. This is a web page served by the box itself.
 - **Latched mouse Hold/Release** — drag Android objects with the real pointer
 - **App launcher** — enumerated live from the device; long-press to pin favourites
 - **Send a URL to the TV** — paste a link, it opens in the app you choose
+- **On-demand casting** — launch an installed Miracast, AirPlay, or DLNA
+  firmware receiver from the Apps tab, then stop it to release its RAM; the
+  module adds no resident casting service
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
   storage, uptime
 - **Process manager** — top processes by CPU, with a kill button

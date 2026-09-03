@@ -86,6 +86,8 @@
   input[type=text]:focus { outline:none; border-color:var(--acc); }
   .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
   .apps button { padding:16px 10px; font-size:14px; }
+  .apps button small { display:block; margin-top:4px; color:var(--muted); font-size:9.5px; font-weight:400; line-height:1.25; }
+  .apps button:disabled small { color:inherit; }
 
   /* ---------- touchpad ---------- */
   .pad { position:relative; height:44vh; min-height:220px; max-height:380px;
@@ -354,6 +356,19 @@
 
   <!-- ================= APPS ================= -->
   <section class="tabpane" data-tab="apps">
+    <div class="card" id="cast-card">
+      <div class="sec">Cast or mirror</div>
+      <p class="advanced-note">Uses receivers already built into the projector. TVRemoteWeb temporarily enables only your selection; Stop casting disables it again and releases its RAM.</p>
+      <div class="apps">
+        <button data-cast="miracast">▣ Android / Windows<small>Miracast · LAN remote pauses</small></button>
+        <button data-cast="airplay">◉ iPhone / Mac<small>AirPlay · full screen</small></button>
+        <button data-cast="dlna">▶ Media app<small>DLNA · lowest streaming load</small></button>
+        <button data-cast="stop" class="danger">■ Stop casting<small>Release receiver RAM</small></button>
+      </div>
+      <p class="advanced-note" style="margin-top:9px">Miracast switches Wi‑Fi into direct-display mode, so this page pauses until casting ends. AirPlay and DLNA keep the LAN remote available.</p>
+      <div class="settings-status" id="cast-status">Checking built-in receivers…</div>
+    </div>
+
     <div class="card">
       <div class="sec">TV Apps
         <span class="note">— tap to launch · long-press to pin</span>
@@ -630,7 +645,10 @@ function showTab(name, remember) {
   if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
   if (name === 'tools' && !procsLoaded) { procsLoaded = true; pullProcs(); }
   if (name === 'tools' && !settingsLoaded) { settingsLoaded = true; pullSettings(); }
-  if (name === 'apps'  && !appsLoaded)  { appsLoaded  = true; pullApps(); }
+  if (name === 'apps') {
+    if (!appsLoaded) { appsLoaded = true; pullApps(); }
+    pullCastStatus();
+  }
   if (name === 'align' && !keystoneLoaded) { keystoneLoaded = true; pullKeystoneStatus(); }
 }
 navBtns.forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
@@ -703,6 +721,42 @@ document.getElementById('url').addEventListener('keydown', e => {
 /* ---------------- QR splash ---------------- */
 document.getElementById('show-qr').addEventListener('click',     () => call('splash=show'));
 document.getElementById('hide-splash').addEventListener('click', () => call('splash=hide'));
+
+/* ---------------- on-demand firmware casting ---------------- */
+const castStatus = document.getElementById('cast-status');
+const castButtons = [...document.querySelectorAll('[data-cast]')];
+function renderCast(result, action) {
+  const available = result.available || {};
+  const running = result.running || {};
+  castButtons.forEach(button => {
+    const mode = button.dataset.cast;
+    button.disabled = mode !== 'stop' && !available[mode];
+    button.classList.toggle('acc', !!running[mode]);
+  });
+  const labels = {miracast:'Miracast', airplay:'AirPlay', dlna:'DLNA'};
+  const active = Object.keys(running).filter(mode => running[mode]);
+  const statusDetail = active.length ? 'Active: ' + active.map(mode => labels[mode]).join(', ') + '.' : 'All built-in receivers are stopped; no casting RAM is in use.';
+  castStatus.textContent = action === 'status' ? statusDetail : (result.detail || statusDetail);
+  castStatus.className = 'settings-status ' + (result.status === 'err' ? 'err' : 'ok');
+}
+async function castRequest(action) {
+  castButtons.forEach(button => { button.disabled = true; });
+  castStatus.textContent = action === 'status' ? 'Checking built-in receivers…' : 'Switching receiver…';
+  castStatus.className = 'settings-status';
+  try {
+    const query = new URLSearchParams({action, token});
+    const response = await fetch('/cgi-bin/cast.cgi?' + query, {cache:'no-store'});
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    renderCast(await response.json(), action);
+    if (action !== 'status') setTimeout(pullCastStatus, 900);
+  } catch (error) {
+    castStatus.textContent = 'Casting control failed: ' + error.message;
+    castStatus.className = 'settings-status err';
+    castButtons.forEach(button => { button.disabled = false; });
+  }
+}
+function pullCastStatus() { return castRequest('status'); }
+castButtons.forEach(button => button.addEventListener('click', () => castRequest(button.dataset.cast)));
 
 /* ---------------- Touchpad (real mouse via /dev/input/event7) ---------------- */
 let sens = parseFloat(localStorage.getItem('sens') || '2.5');
