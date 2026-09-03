@@ -163,6 +163,13 @@ if [ -n "$splash" ]; then
 fi
 
 if [ -n "$kill_pid" ]; then
+  if [ -z "$pin" ] || [ "${HTTP_X_PROCESS_PASSWORD:-}" != "$pin" ]; then
+    echo "Status: 403 Forbidden"
+    echo "Content-Type: application/json"
+    echo
+    echo '{"status":"err","detail":"process PIN required"}'
+    exit 0
+  fi
   case "$kill_pid" in
     ''|*[!0-9]*) status="err"; detail="bad pid" ;;
     *) if kill "$kill_pid" 2>/dev/null; then

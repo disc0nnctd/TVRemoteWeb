@@ -32,14 +32,14 @@ the Beem 470 reference device.
 | Photo-assisted alignment | Review and apply |
 |:---:|:---:|
 | <img src="docs/screenshots/auto-align-start.png" width="280" alt="Auto Align Screen camera and photo starting controls"><br>Start from the camera or an existing photo | <img src="docs/screenshots/auto-align-detected.png" width="280" alt="Detected physical screen and projected-image outlines over a phone photo"><br>Review detected screen and projection edges |
-| <img src="docs/screenshots/auto-align-apply.png" width="280" alt="Calculated keystone correction with apply and restore controls"><br>Apply or restore the proposed correction | <img src="docs/screenshots/process-monitor.png" width="280" alt="Low-overhead projector process monitor"><br>Inspect CPU and RAM usage |
+| <img src="docs/screenshots/auto-align-apply.png" width="280" alt="Calculated keystone correction with apply and restore controls"><br>Apply or restore the proposed correction | |
 
 <details>
 <summary><strong>More maintenance controls</strong></summary>
 <br>
-<p align="center">
-  <img src="docs/screenshots/maintenance-tools.png" width="320" alt="Cache, service, Wi-Fi, logcat, system, and reboot controls">
-</p>
+| Maintenance | Protected processes |
+|:---:|:---:|
+| <img src="docs/screenshots/maintenance-tools.png" width="280" alt="Cache, service, Wi-Fi, logcat, system, and reboot controls"><br>Maintenance and system actions | <img src="docs/screenshots/process-monitor.png" width="280" alt="Unlocked PIN-protected projector process monitor"><br>Unlocked process view; hidden behind the remote PIN |
 </details>
 
 ## Why
@@ -65,7 +65,8 @@ pairing dance. This is a web page served by the box itself.
   module adds no resident casting service
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
   storage, uptime
-- **Process manager** — top processes by CPU, with a kill button
+- **Password-gated process manager** — collapsed at the bottom of Tools; enter
+  the projector remote PIN before viewing processes or using a kill button
 - **Maintenance** — trim caches, drop page cache, cycle Wi-Fi, restart services,
   tail logcat
 - **Advanced settings** — timeout (including practical Never), screensaver,
@@ -143,6 +144,8 @@ This is designed for a home LAN and the threat model is "someone else on my
 Wi-Fi", not "the public internet".
 
 - Every endpoint requires the token; requests without it get `403`
+- Process listing and kill actions require the remote PIN again through a
+  separate request header; the browser keeps it only in memory while unlocked
 - The token file is `0600` and root-owned
 - The WebSocket refuses every command until the token frame arrives
 - **Traffic is plain HTTP and the token is in the query string.** Anyone who

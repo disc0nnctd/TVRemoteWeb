@@ -78,12 +78,12 @@
   .dpad .sp { visibility:hidden; }
 
   .txtrow { display:flex; gap:8px; }
-  input[type=text] {
+  input[type=text], input[type=password] {
     flex:1; padding:14px 12px; font-size:15px; border-radius:10px;
     border:1px solid var(--line); background:var(--sunk); color:var(--txt);
     font-family:inherit; min-width:0;
   }
-  input[type=text]:focus { outline:none; border-color:var(--acc); }
+  input[type=text]:focus, input[type=password]:focus { outline:2px solid var(--acc); outline-offset:1px; border-color:var(--acc); }
   .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
   .apps button { padding:16px 10px; font-size:14px; }
   .apps button small { display:block; margin-top:4px; color:var(--muted); font-size:9.5px; font-weight:400; line-height:1.25; }
@@ -142,6 +142,25 @@
   .proc button { padding:7px 6px; font-size:10px; background:#3a1f22; color:#ff9b9b; flex:none; }
   .proc button:active { background:#5a2a2f; }
   .empty { text-align:center; color:var(--muted); padding:24px 10px; font-size:11px; }
+  .proc-vault { padding:0; overflow:hidden; }
+  .proc-vault > summary { min-height:58px; display:flex; align-items:center; gap:10px; padding:12px;
+                          cursor:pointer; list-style:none; user-select:none; }
+  .proc-vault > summary::-webkit-details-marker { display:none; }
+  .proc-vault > summary::after { content:'+'; margin-left:auto; color:var(--muted); font-size:20px; }
+  .proc-vault[open] > summary::after { content:'−'; }
+  .proc-vault > summary:focus-visible { outline:2px solid var(--acc); outline-offset:-3px; }
+  .proc-vault-title { display:flex; flex-direction:column; gap:3px; }
+  .proc-vault-title strong { font-size:13px; }
+  .proc-vault-title small { color:var(--muted); font-size:10px; font-weight:400; }
+  .proc-vault-body { padding:0 12px 12px; border-top:1px solid var(--line); }
+  .proc-lock { padding-top:12px; }
+  .proc-lock label { display:block; margin:0 2px 7px; color:var(--muted); font-size:11px; }
+  .proc-lock-row { display:flex; gap:8px; }
+  .proc-lock-row input { min-width:0; flex:1; padding:12px; border:1px solid var(--line); border-radius:10px;
+                         background:var(--sunk); color:var(--txt); font:inherit; }
+  .proc-lock-row button { flex:0 0 auto; }
+  .proc-error { min-height:18px; margin:7px 2px 0; color:#ff9b9b; font-size:10.5px; }
+  .proc-controls[hidden] { display:none; }
 
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .grid2 button { padding:13px 8px; font-size:12.5px; }
@@ -590,17 +609,6 @@
     </div>
 
     <div class="card">
-      <div class="sec">Processes <span class="note">— top 15 by CPU</span></div>
-      <div class="ctl">
-        <button class="ghost" id="proc-refresh">↻ Refresh</button>
-      </div>
-      <div class="proc-list" id="proc-list">
-        <div class="empty">Tap ↻ Refresh to load</div>
-      </div>
-      <div class="meta" id="proc-ts"></div>
-    </div>
-
-    <div class="card">
       <div class="sec">Maintenance</div>
       <div class="grid2">
         <button data-admin="trim_cache">🧹 Trim Cache</button>
@@ -625,6 +633,31 @@
         <button data-sys="reboot" class="ghost danger">⟳ Reboot Projector</button>
       </div>
     </div>
+
+    <details class="card proc-vault" id="proc-vault">
+      <summary>
+        <span class="proc-vault-title"><strong>Process Monitor</strong><small>Protected dangerous controls · remote PIN required</small></span>
+      </summary>
+      <div class="proc-vault-body">
+        <form class="proc-lock" id="proc-lock">
+          <label for="proc-password">Enter the projector remote PIN to view or kill processes</label>
+          <div class="proc-lock-row">
+            <input id="proc-password" type="password" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="proc-error">
+            <button type="submit" class="ghost">Unlock</button>
+          </div>
+          <div class="proc-error" id="proc-error" role="status" aria-live="polite"></div>
+        </form>
+        <div class="proc-controls" id="proc-controls" hidden>
+          <p class="advanced-note">Killing system processes can freeze or reboot the projector. Only stop a process you recognize.</p>
+          <div class="ctl">
+            <button class="ghost" id="proc-lock-button">Lock</button>
+            <button class="ghost" id="proc-refresh">↻ Refresh</button>
+          </div>
+          <div class="proc-list" id="proc-list"><div class="empty">Unlocked</div></div>
+          <div class="meta" id="proc-ts"></div>
+        </div>
+      </div>
+    </details>
   </section>
 
 </div>
@@ -655,7 +688,6 @@ function showTab(name, remember) {
   window.scrollTo(0, 0);
   if (remember !== false) localStorage.setItem('tab', name);
   if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
-  if (name === 'tools' && !procsLoaded) { procsLoaded = true; pullProcs(); }
   if (name === 'tools' && !settingsLoaded) { settingsLoaded = true; pullSettings(); }
   if (name === 'tools') pullBluetoothStatus();
   if (name === 'apps') {
@@ -1235,7 +1267,7 @@ bluetoothButtons.forEach(button => button.addEventListener('click', () => {
 }));
 
 /* ---------------- stats + processes ---------------- */
-let statsLoaded = false, procsLoaded = false;
+let statsLoaded = false;
 const setEl = k => document.querySelector('[data-s="' + k + '"]');
 const set   = (k, v)   => { const el = setEl(k); if (el) el.textContent = v; };
 const setW  = (k, pct) => { const el = setEl(k); if (el) { el.style.width = pct + '%';
@@ -1249,6 +1281,12 @@ const fmtGB = kb => (kb/1024/1024).toFixed(2) + ' GB';
 const tsEl    = document.getElementById('stats-ts');
 const procList= document.getElementById('proc-list');
 const procTs  = document.getElementById('proc-ts');
+const procVault = document.getElementById('proc-vault');
+const procLockForm = document.getElementById('proc-lock');
+const procPasswordInput = document.getElementById('proc-password');
+const procControls = document.getElementById('proc-controls');
+const procError = document.getElementById('proc-error');
+let processPassword = '';
 const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
 function renderProcs(procs) {
@@ -1267,17 +1305,19 @@ function renderProcs(procs) {
   procList.querySelectorAll('[data-kill]').forEach(b => {
     b.addEventListener('click', () => {
       if (!confirm('Kill PID ' + b.dataset.kill + '?')) return;
-      call('kill=' + b.dataset.kill).then(() => setTimeout(pullProcs, 400));
+      killProcess(b.dataset.kill);
     });
   });
 }
 
-async function pullStats(includeProcs) {
+async function pullStats(includeProcs, password) {
   tsEl.textContent = 'loading…';
   try {
     const q = (includeProcs ? '?top=15&token=' : '?token=') + encodeURIComponent(token);
-    const r = await fetch('/cgi-bin/stats.cgi' + q, {cache:'no-store'});
-    if (!r.ok) { tsEl.textContent = 'error ' + r.status; return; }
+    const request = {cache:'no-store'};
+    if (includeProcs) request.headers = {'X-Process-Password':password || ''};
+    const r = await fetch('/cgi-bin/stats.cgi' + q, request);
+    if (!r.ok) { tsEl.textContent = 'error ' + r.status; return false; }
     const s = await r.json();
     setT('cpu_temp', s.cpu_temp);
     setT('gpu_temp', s.gpu_temp);
@@ -1303,9 +1343,60 @@ async function pullStats(includeProcs) {
       renderProcs(s.procs);
       procTs.textContent = 'updated ' + new Date().toLocaleTimeString();
     }
-  } catch (e) { tsEl.textContent = 'fetch failed'; }
+    return true;
+  } catch (e) { tsEl.textContent = 'fetch failed'; return false; }
 }
-async function pullProcs() { await pullStats(true); }
+async function pullProcs() {
+  if (!processPassword) return;
+  const ok = await pullStats(true, processPassword);
+  if (!ok) lockProcessMonitor('Session expired. Enter the PIN again.');
+}
+
+function lockProcessMonitor(message) {
+  processPassword = '';
+  procPasswordInput.value = '';
+  procLockForm.hidden = false;
+  procControls.hidden = true;
+  procList.innerHTML = '<div class="empty">Locked</div>';
+  procTs.textContent = '';
+  procError.textContent = message || '';
+}
+
+async function unlockProcessMonitor(event) {
+  event.preventDefault();
+  const password = procPasswordInput.value.trim();
+  if (!password) return;
+  procError.textContent = 'Checking…';
+  try {
+    const q = '?top=15&token=' + encodeURIComponent(token);
+    const r = await fetch('/cgi-bin/stats.cgi' + q, {cache:'no-store', headers:{'X-Process-Password':password}});
+    if (!r.ok) throw new Error(r.status === 403 ? 'Incorrect PIN.' : 'Could not unlock (' + r.status + ').');
+    const data = await r.json();
+    processPassword = password;
+    procPasswordInput.value = '';
+    procLockForm.hidden = true;
+    procControls.hidden = false;
+    procError.textContent = '';
+    renderProcs(data.procs || []);
+    procTs.textContent = 'updated ' + new Date().toLocaleTimeString();
+  } catch (error) {
+    processPassword = '';
+    procError.textContent = error.message || 'Could not unlock.';
+    procPasswordInput.select();
+  }
+}
+
+async function killProcess(pid) {
+  sEl.textContent = '…';
+  try {
+    const q = 'kill=' + encodeURIComponent(pid) + (token ? '&token=' + encodeURIComponent(token) : '');
+    const r = await fetch('/cgi-bin/remote.cgi?' + q, {cache:'no-store', headers:{'X-Process-Password':processPassword}});
+    const data = await r.json();
+    sEl.textContent = data.detail || data.status;
+    if (r.status === 403) { lockProcessMonitor('Session expired. Enter the PIN again.'); return; }
+    setTimeout(pullProcs, 400);
+  } catch (error) { sEl.textContent = 'err: ' + error.message; }
+}
 
 let liveTimer = null;
 const liveBtn = document.getElementById('stats-live');
@@ -1325,6 +1416,9 @@ function setLive(on) {
 document.getElementById('stats-refresh').addEventListener('click', () => pullStats(false));
 liveBtn.addEventListener('click', () => setLive(liveTimer === null));
 document.getElementById('proc-refresh').addEventListener('click', pullProcs);
+document.getElementById('proc-lock-button').addEventListener('click', () => lockProcessMonitor());
+procLockForm.addEventListener('submit', unlockProcessMonitor);
+procVault.addEventListener('toggle', () => { if (!procVault.open) lockProcessMonitor(); });
 
 /* pause live polling when the tab is hidden */
 document.addEventListener('visibilitychange', () => {

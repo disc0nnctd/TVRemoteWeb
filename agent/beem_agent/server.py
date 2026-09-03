@@ -86,7 +86,9 @@ INSPECT_ASSETS = (
     "files/cgi-bin/bluetooth.cgi",
     "files/cgi-bin/cast.cgi",
     "files/cgi-bin/keystone.cgi",
+    "files/cgi-bin/remote.cgi",
     "files/cgi-bin/settings.cgi",
+    "files/cgi-bin/stats.cgi",
 )
 
 DISPLAY_PROPS = {
