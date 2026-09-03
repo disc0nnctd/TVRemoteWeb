@@ -16,6 +16,7 @@ test('Bluetooth endpoint uses Android services only on demand', () => {
   assert.match(bluetooth, /svc bluetooth "\$mode"/);
   assert.match(bluetooth, /android\.settings\.BLUETOOTH_PAIRING_SETTINGS/);
   assert.match(bluetooth, /android\.settings\.BLUETOOTH_SETTINGS/);
+  assert.match(bluetooth, /cmd package resolve-activity --brief/);
   assert.doesNotMatch(service, /bluetooth\.cgi|bluetooth_manager/);
   assert.match(agent, /"files\/cgi-bin\/bluetooth\.cgi": 0o755/);
 });

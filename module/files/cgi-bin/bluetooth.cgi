@@ -40,9 +40,14 @@ set_power() {
 }
 open_settings() {
   target="$1"
-  am start --user 0 -a "$target" >/dev/null 2>&1 || \
-    am start --user 0 -a android.settings.BLUETOOTH_SETTINGS >/dev/null 2>&1 || \
-    am start --user 0 -a android.settings.SETTINGS >/dev/null 2>&1
+  component="$(cmd package resolve-activity --brief -a "$target" 2>/dev/null | "$BB" grep -m1 -E '^[a-zA-Z0-9_.]+/')"
+  if [ -z "$component" ] && [ "$target" != "android.settings.BLUETOOTH_SETTINGS" ]; then
+    component="$(cmd package resolve-activity --brief -a android.settings.BLUETOOTH_SETTINGS 2>/dev/null | "$BB" grep -m1 -E '^[a-zA-Z0-9_.]+/')"
+  fi
+  if [ -z "$component" ]; then
+    component="$(cmd package resolve-activity --brief -a android.settings.SETTINGS 2>/dev/null | "$BB" grep -m1 -E '^[a-zA-Z0-9_.]+/')"
+  fi
+  [ -n "$component" ] && am start --user 0 -n "$component" >/dev/null 2>&1
 }
 
 action="$(get_param action 2>/dev/null || true)"
@@ -57,7 +62,7 @@ else
     disable)
       if set_power disable; then detail="Bluetooth is turning off."; else status="err"; detail="Bluetooth could not be disabled."; fi ;;
     pair)
-      if open_settings android.settings.BLUETOOTH_PAIRING_SETTINGS; then detail="Bluetooth pairing opened on the projector."; else status="err"; detail="Bluetooth pairing settings could not be opened."; fi ;;
+      if open_settings android.settings.BLUETOOTH_PAIRING_SETTINGS; then detail="Bluetooth pairing settings opened on the projector."; else status="err"; detail="Bluetooth pairing settings could not be opened."; fi ;;
     settings)
       if open_settings android.settings.BLUETOOTH_SETTINGS; then detail="Bluetooth devices opened on the projector."; else status="err"; detail="Bluetooth settings could not be opened."; fi ;;
     *) status="err"; detail="Unknown Bluetooth action." ;;
