@@ -36,7 +36,7 @@ enabled() {
 as_bool() { if "$@"; then printf true; else printf false; fi; }
 set_power() {
   mode="$1"
-  cmd bluetooth_manager "$mode" >/dev/null 2>&1 || svc bluetooth "$mode" >/dev/null 2>&1
+  svc bluetooth "$mode" >/dev/null 2>&1
 }
 open_settings() {
   target="$1"

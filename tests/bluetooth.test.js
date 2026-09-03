@@ -11,12 +11,13 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 test('Bluetooth endpoint uses Android services only on demand', () => {
   const bluetooth = read('module/files/cgi-bin/bluetooth.cgi');
   const service = read('module/service.sh');
+  const agent = read('agent/beem_agent/server.py');
 
-  assert.match(bluetooth, /cmd bluetooth_manager "\$mode"/);
   assert.match(bluetooth, /svc bluetooth "\$mode"/);
   assert.match(bluetooth, /android\.settings\.BLUETOOTH_PAIRING_SETTINGS/);
   assert.match(bluetooth, /android\.settings\.BLUETOOTH_SETTINGS/);
   assert.doesNotMatch(service, /bluetooth\.cgi|bluetooth_manager/);
+  assert.match(agent, /"files\/cgi-bin\/bluetooth\.cgi": 0o755/);
 });
 
 test('Bluetooth endpoint preserves token authentication and allowlists actions', () => {

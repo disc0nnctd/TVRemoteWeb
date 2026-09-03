@@ -110,7 +110,7 @@ case "$action" in
     if installed "$DLNA_PKG"; then
       stop_watchdog
       stop_others "$DLNA_PKG"
-      if enable_for_cast "$DLNA_PKG" && am startservice --user 0 -n "$DLNA_PKG/.DlnaServer" >/dev/null 2>&1; then
+      if enable_for_cast "$DLNA_PKG" && am broadcast --user 0 -a com.ecloud.intent.START_DLNA -p "$DLNA_PKG" >/dev/null 2>&1; then
         detail="DLNA ready. Choose Beem 470 from a DLNA media app."
       else restore_disabled "$DLNA_PKG"; status="err"; detail="The built-in DLNA receiver could not start."; fi
     else status="err"; detail="No built-in DLNA receiver was found."; fi ;;

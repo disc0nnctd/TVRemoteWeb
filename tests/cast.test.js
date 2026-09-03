@@ -11,18 +11,20 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 test('casting delegates to installed firmware receivers with no resident daemon', () => {
   const cast = read('module/files/cgi-bin/cast.cgi');
   const service = read('module/service.sh');
+  const agent = read('agent/beem_agent/server.py');
 
   assert.match(cast, /MIRACAST_PKG="com\.softwinner\.miracastReceiver"/);
   assert.match(cast, /"\$MIRACAST_PKG\/\.Miracast"/);
   assert.match(cast, /AIRPLAY_PKG="com\.ecloud\.eairplay"/);
   assert.match(cast, /"\$AIRPLAY_PKG\/\.MainActivity"/);
   assert.match(cast, /DLNA_PKG="com\.ecloud\.emedia"/);
-  assert.match(cast, /"\$DLNA_PKG\/\.DlnaServer"/);
+  assert.match(cast, /com\.ecloud\.intent\.START_DLNA/);
   assert.match(cast, /am force-stop/);
   assert.match(cast, /pm enable --user 0/);
   assert.match(cast, /pm disable-user --user 0/);
   assert.match(cast, /start_miracast_watchdog/);
   assert.doesNotMatch(service, /cast\.cgi|miracastReceiver|eairplay|emedia/);
+  assert.match(agent, /"files\/cgi-bin\/cast\.cgi": 0o755/);
 });
 
 test('casting endpoint is token protected and actions are allowlisted', () => {

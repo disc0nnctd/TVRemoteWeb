@@ -69,6 +69,8 @@ RUNTIME_ASSETS = {
     "files/qrcode.js": 0o644,
     "files/pqcli.dex": 0o644,
     "files/cgi-bin/apps.cgi": 0o755,
+    "files/cgi-bin/bluetooth.cgi": 0o755,
+    "files/cgi-bin/cast.cgi": 0o755,
     "files/cgi-bin/keystone.cgi": 0o755,
     "files/cgi-bin/qr.cgi": 0o755,
     "files/cgi-bin/remote.cgi": 0o755,
@@ -81,6 +83,8 @@ INSPECT_ASSETS = (
     "files/remote.html",
     "files/keystone.js",
     "files/pqcli.dex",
+    "files/cgi-bin/bluetooth.cgi",
+    "files/cgi-bin/cast.cgi",
     "files/cgi-bin/keystone.cgi",
     "files/cgi-bin/settings.cgi",
 )
