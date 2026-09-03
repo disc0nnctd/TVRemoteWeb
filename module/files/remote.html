@@ -578,6 +578,18 @@
     </div>
 
     <div class="card">
+      <div class="sec">Bluetooth</div>
+      <p class="advanced-note">On/off uses Android's system Bluetooth service. Pair and Manage open the projector's existing settings screen; continue with this remote's D-pad.</p>
+      <div class="grid2">
+        <button data-bluetooth="enable">Bluetooth on</button>
+        <button data-bluetooth="disable" class="ghost">Bluetooth off</button>
+        <button data-bluetooth="pair">＋ Pair device</button>
+        <button data-bluetooth="settings">⚙ Manage devices</button>
+      </div>
+      <div class="settings-status" id="bluetooth-status">Open Tools to check Bluetooth.</div>
+    </div>
+
+    <div class="card">
       <div class="sec">Processes <span class="note">— top 15 by CPU</span></div>
       <div class="ctl">
         <button class="ghost" id="proc-refresh">↻ Refresh</button>
@@ -645,6 +657,7 @@ function showTab(name, remember) {
   if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
   if (name === 'tools' && !procsLoaded) { procsLoaded = true; pullProcs(); }
   if (name === 'tools' && !settingsLoaded) { settingsLoaded = true; pullSettings(); }
+  if (name === 'tools') pullBluetoothStatus();
   if (name === 'apps') {
     if (!appsLoaded) { appsLoaded = true; pullApps(); }
     pullCastStatus();
@@ -1185,6 +1198,41 @@ document.getElementById('settings-apply').addEventListener('click', async () => 
     setSettingsStatus('Device settings failed: ' + error.message, 'err');
   } finally { button.disabled = false; }
 });
+
+/* ---------------- Bluetooth system controls ---------------- */
+const bluetoothStatus = document.getElementById('bluetooth-status');
+const bluetoothButtons = [...document.querySelectorAll('[data-bluetooth]')];
+function renderBluetooth(result, action) {
+  bluetoothButtons.forEach(button => {
+    button.disabled = !result.available;
+    button.classList.toggle('acc', button.dataset.bluetooth === 'enable' && !!result.enabled);
+  });
+  const current = result.available ? 'Bluetooth is ' + (result.enabled ? 'on.' : 'off.') : 'Bluetooth hardware is unavailable.';
+  bluetoothStatus.textContent = action === 'status' ? current : (result.detail || current);
+  bluetoothStatus.className = 'settings-status ' + (result.status === 'err' ? 'err' : 'ok');
+}
+async function bluetoothRequest(action) {
+  bluetoothButtons.forEach(button => { button.disabled = true; });
+  bluetoothStatus.textContent = action === 'status' ? 'Checking Bluetooth…' : 'Applying Bluetooth action…';
+  bluetoothStatus.className = 'settings-status';
+  try {
+    const query = new URLSearchParams({action, token});
+    const response = await fetch('/cgi-bin/bluetooth.cgi?' + query, {cache:'no-store'});
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    renderBluetooth(await response.json(), action);
+    if (action === 'enable' || action === 'disable') setTimeout(pullBluetoothStatus, 1400);
+  } catch (error) {
+    bluetoothStatus.textContent = 'Bluetooth control failed: ' + error.message;
+    bluetoothStatus.className = 'settings-status err';
+    bluetoothButtons.forEach(button => { button.disabled = false; });
+  }
+}
+function pullBluetoothStatus() { return bluetoothRequest('status'); }
+bluetoothButtons.forEach(button => button.addEventListener('click', () => {
+  const action = button.dataset.bluetooth;
+  if (action === 'disable' && !confirm('Turn Bluetooth off? Connected Bluetooth remotes, speakers, and keyboards will disconnect.')) return;
+  bluetoothRequest(action);
+}));
 
 /* ---------------- stats + processes ---------------- */
 let statsLoaded = false, procsLoaded = false;

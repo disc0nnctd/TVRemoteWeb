@@ -44,8 +44,9 @@ pairing dance. This is a web page served by the box itself.
 - **Maintenance** — trim caches, drop page cache, cycle Wi-Fi, restart services,
   tail logcat
 - **Advanced settings** — timeout (including practical Never), screensaver,
-  stay-awake, rotation, animation speed, and the Beem's 13-channel hardware
-  picture profile with staged apply and rollback
+  stay-awake, rotation, animation speed, on-demand Bluetooth power/pairing/device
+  management, and the Beem's 13-channel hardware picture profile with staged
+  apply and rollback
 - **Keystone Lab** — automatically detect the physical screen and projected
   image from a phone photo, refine either set of corners with draggable nodes,
   preview, apply, re-edit, and roll back; its simple default flow starts at a
