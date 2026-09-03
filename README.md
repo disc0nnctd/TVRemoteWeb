@@ -17,6 +17,31 @@ the Beem 470 reference device.
                        ──WS────▶  mousedaemon    ──▶  /dev/input/eventN
 ```
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/projector-home.jpg" width="720" alt="TVRemoteWeb Phone Remote tile running on a real Beem 470 projector">
+</p>
+<p align="center"><em>Running on the Beem 470 reference projector.</em></p>
+
+| Remote and apps | Projector controls |
+|:---:|:---:|
+| <img src="docs/screenshots/remote-controls.png" width="280" alt="Phone remote with navigation, media, volume, and text input controls"><br>Navigation, media and text input | <img src="docs/screenshots/picture-controls.png" width="280" alt="Picture profiles and live brightness, contrast, and color controls"><br>Picture profiles and live tuning |
+| <img src="docs/screenshots/app-launcher.png" width="280" alt="Projector application launcher in the phone remote"><br>Application launcher | <img src="docs/screenshots/power-interface.png" width="280" alt="Screen timeout, screensaver, stay-awake, rotation, and animation controls"><br>Power and interface settings |
+
+| Photo-assisted alignment | Review and apply |
+|:---:|:---:|
+| <img src="docs/screenshots/auto-align-start.png" width="280" alt="Auto Align Screen camera and photo starting controls"><br>Start from the camera or an existing photo | <img src="docs/screenshots/auto-align-detected.png" width="280" alt="Detected physical screen and projected-image outlines over a phone photo"><br>Review detected screen and projection edges |
+| <img src="docs/screenshots/auto-align-apply.png" width="280" alt="Calculated keystone correction with apply and restore controls"><br>Apply or restore the proposed correction | <img src="docs/screenshots/process-monitor.png" width="280" alt="Low-overhead projector process monitor"><br>Inspect CPU and RAM usage |
+
+<details>
+<summary><strong>More maintenance controls</strong></summary>
+<br>
+<p align="center">
+  <img src="docs/screenshots/maintenance-tools.png" width="320" alt="Cache, service, Wi-Fi, logcat, system, and reboot controls">
+</p>
+</details>
+
 ## Why
 
 Android TV remotes are miserable for anything involving text or a cursor, and
