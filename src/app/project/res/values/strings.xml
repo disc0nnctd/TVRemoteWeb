@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Phone Remote QR</string>
+    <string name="hdmi_name">HDMI Inputs</string>
+    <string name="hdmi_1_name">HDMI 1</string>
+    <string name="hdmi_2_name">HDMI 2</string>
+    <string name="hdmi_3_name">HDMI 3</string>
 </resources>

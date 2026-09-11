@@ -18,6 +18,26 @@ class MaintenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "explicit deployment approval"):
             server.deploy_tvremoteweb_runtime("yes")
 
+    def test_live_deploy_selects_the_native_mouse_binary(self) -> None:
+        self.assertEqual(server._mouse_binary_for_abi("armeabi-v7a"), "files/bin/mousedaemon-armv7")
+        self.assertEqual(server._mouse_binary_for_abi("arm64-v8a"), "files/bin/mousedaemon-arm64")
+        self.assertIsNone(server._mouse_binary_for_abi("x86"))
+
+    def test_live_deploy_stages_mouse_binary_before_replacing_running_file(self) -> None:
+        import inspect
+
+        source = inspect.getsource(server.deploy_tvremoteweb_runtime)
+        self.assertIn('mouse_staged = f"{mouse_destination}.new"', source)
+        self.assertIn('mv -f {shlex.quote(mouse_staged)}', source)
+
+    def test_live_deploy_upgrades_the_launcher_without_a_magisk_reflash(self) -> None:
+        import inspect
+
+        source = inspect.getsource(server.deploy_tvremoteweb_runtime)
+        self.assertIn('files/app/versionCode', source)
+        self.assertIn('"install", "-r"', source)
+        self.assertIn("installed_launcher_version < bundled_launcher_version", source)
+
     def test_screen_timeout_accepts_android_never_value(self) -> None:
         with patch.object(server, "_shell", return_value="0") as shell, patch.object(
             server, "_getprop", return_value="0"

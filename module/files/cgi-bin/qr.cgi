@@ -5,6 +5,37 @@
 BB="/data/adb/magisk/busybox"
 PORT="${TVR_PORT:-8787}"
 TOKEN_FILE="/data/adb/tvremoteweb/token"
+STATE="/data/adb/tvremoteweb"
+
+# The projector tile uses the local web server even while a Miracast receiver
+# has taken normal Wi-Fi offline. Reopening that tile is therefore the reliable
+# zero-idle escape hatch: stop receivers, restore their disabled state, and
+# bring Wi-Fi back. The delayed boot splash opts out with boot=1.
+case "$QUERY_STRING" in
+  *mode=splash*) splash_request=1 ;;
+  *) splash_request=0 ;;
+esac
+case "$QUERY_STRING" in
+  *boot=1*) boot_request=1 ;;
+  *) boot_request=0 ;;
+esac
+if [ "$splash_request" = 1 ] && [ "$boot_request" = 0 ]; then
+  watchdog_file="$STATE/cast-watchdog.pid"
+  enabled_file="$STATE/cast-enabled-by-tvremoteweb"
+  if [ -s "$watchdog_file" ]; then
+    watchdog_pid="$(cat "$watchdog_file" 2>/dev/null)"
+    case "$watchdog_pid" in ''|*[!0-9]*) ;; *) kill "$watchdog_pid" >/dev/null 2>&1 ;; esac
+  fi
+  rm -f "$watchdog_file"
+  for pkg in com.softwinner.miracastReceiver com.ecloud.eairplay com.ecloud.emedia; do
+    am force-stop "$pkg" >/dev/null 2>&1
+    if [ -s "$enabled_file" ] && [ "$(cat "$enabled_file" 2>/dev/null)" = "$pkg" ]; then
+      pm disable-user --user 0 "$pkg" >/dev/null 2>&1
+      rm -f "$enabled_file"
+    fi
+  done
+  svc wifi enable >/dev/null 2>&1
+fi
 
 # ---- PIN ----
 pin=""

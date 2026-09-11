@@ -36,8 +36,11 @@
   .wsdot { width:8px; height:8px; border-radius:50%; background:#555e69; flex:0 0 auto; transition:background .3s, box-shadow .3s; }
   body[data-ws="ok"]  .wsdot { background:#3fb950; box-shadow:0 0 8px #3fb950; }
   body[data-ws="off"] .wsdot { background:#ff6b6b; box-shadow:0 0 8px #ff6b6b; }
-  .status { font-size:10px; color:var(--muted); max-width:42vw; overflow:hidden;
-            text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+  .status { font-size:11px; color:var(--muted); max-width:42vw; overflow:hidden;
+            text-overflow:ellipsis; white-space:nowrap; text-align:right;
+            transition:color .15s; }
+  .status.flash { color:var(--acc); }
+  .status.err { color:#ff6b6b; }
   .header-action { flex:0 0 44px; width:44px; height:44px; padding:10px; border:1px solid var(--line);
                    background:#171c23; display:grid; place-items:center; }
   .header-action svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8;
@@ -72,7 +75,8 @@
   button.warn { color:#ffb84c; }
   button.danger { color:#ff6b6b; }
 
-  .dpad { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,66px); gap:8px; }
+  .dpad { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,66px); gap:8px;
+          max-width:246px; margin:0 auto; }
   .dpad button { font-size:22px; }
   .dpad .ok { background:var(--acc); color:#fff; font-size:15px; border-radius:14px; }
   .dpad .sp { visibility:hidden; }
@@ -84,10 +88,15 @@
     font-family:inherit; min-width:0;
   }
   input[type=text]:focus, input[type=password]:focus { outline:2px solid var(--acc); outline-offset:1px; border-color:var(--acc); }
+  #cast-card > summary::-webkit-details-marker { display:none; }
+  #cast-card[open] > summary { margin-bottom:9px; }
   .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
   .apps button { padding:16px 10px; font-size:14px; }
   .apps button small { display:block; margin-top:4px; color:var(--muted); font-size:9.5px; font-weight:400; line-height:1.25; }
   .apps button:disabled small { color:inherit; }
+  .source-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .source-grid button { min-height:50px; }
+  .source-grid button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
 
   /* ---------- touchpad ---------- */
   .pad { position:relative; height:44vh; min-height:220px; max-height:380px;
@@ -125,7 +134,7 @@
                 padding-bottom:3px; border-bottom:1px solid var(--line); }
   .stats .lbl:first-child { margin-top:0; }
   .ctl { display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; }
-  .ctl button { font-size:11px; padding:7px 11px; flex:0 0 auto; }
+  .ctl button { font-size:11px; padding:7px 11px; flex:0 0 auto; min-height:44px; }
   .ctl button.live.on { background:var(--acc); color:#fff; border-color:var(--acc); }
   .meta { font-size:10px; color:var(--muted); text-align:right; margin-top:8px; }
 
@@ -139,7 +148,7 @@
   .proc .cpu, .proc .mem { text-align:right; font-variant-numeric:tabular-nums;
                            color:var(--muted); font-size:10.5px; min-width:34px; }
   .proc .cpu.hot { color:#ff6b6b; font-weight:700; }
-  .proc button { padding:7px 6px; font-size:10px; background:#3a1f22; color:#ff9b9b; flex:none; }
+  .proc button { padding:7px 10px; font-size:11px; min-height:44px; min-width:44px; background:#3a1f22; color:#ff9b9b; flex:none; }
   .proc button:active { background:#5a2a2f; }
   .empty { text-align:center; color:var(--muted); padding:24px 10px; font-size:11px; }
   .proc-vault { padding:0; overflow:hidden; }
@@ -213,11 +222,16 @@
   .ks-copy { font-size:11px; color:var(--muted); line-height:1.45; margin:0 2px 10px; }
   .ks-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .ks-actions button, .file-btn { min-height:44px; min-width:0; padding-left:6px; padding-right:6px; font-size:12px; }
-  .file-btn { display:flex; align-items:center; justify-content:center; padding:10px;
-              border-radius:10px; background:#20262e; color:var(--txt); font-size:13px;
-              font-weight:600; cursor:pointer; transition:background .2s; text-align:center; }
+  .file-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+              padding:10px 6px; min-height:52px; border:none;
+              border-radius:10px; background:#20262e; color:var(--txt); font-size:12.5px;
+              font-weight:600; cursor:pointer; transition:background .2s; text-align:center; font-family:inherit; }
+  .file-btn small { display:block; font-weight:400; font-size:9.5px; color:var(--muted); }
   .file-btn.acc { background:var(--acc); color:#fff; }
+  .file-btn.acc small { color:rgba(255,255,255,.78); }
+  .file-btn.ghost { background:transparent; border:1px solid var(--line); color:var(--muted); }
   .file-btn:active { background:#2c3542; }
+  .file-btn.ghost:active { background:rgba(255,255,255,.05); }
   .visually-hidden { position:absolute!important; width:1px!important; height:1px!important;
                      padding:0!important; margin:-1px!important; overflow:hidden!important;
                      clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
@@ -252,7 +266,8 @@
   .ks-lens input { width:18px; height:18px; accent-color:var(--acc); }
   .ks-presets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
   .ks-presets button { min-width:0; min-height:44px; padding:8px 4px; font-size:11px; }
-  .ks-auto-actions { display:grid; grid-template-columns:2fr 1fr; gap:8px; }
+  .ks-auto-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  #ks-cancel-setup.danger { color:#ff9b9b; border-color:#683239; }
   .ks-manual-toggle { width:100%; margin-top:8px; }
 
   /* ---------- bottom tab bar ---------- */
@@ -327,6 +342,18 @@
     </div>
 
     <div class="card">
+      <div class="sec">Input source</div>
+      <p class="advanced-note">Switch directly to a projector HDMI port, or open the full source menu on the projector.</p>
+      <div class="source-grid" role="group" aria-label="Projector input source">
+        <button data-hdmi="picker" class="ghost">Source menu</button>
+        <button data-hdmi="hdmi1">HDMI 1</button>
+        <button data-hdmi="hdmi2">HDMI 2</button>
+        <button data-hdmi="hdmi3">HDMI 3</button>
+      </div>
+      <div class="settings-status" id="hdmi-status" role="status" aria-live="polite">Checking HDMI support…</div>
+    </div>
+
+    <div class="card">
       <div class="sec">Text Input</div>
       <div class="txtrow">
         <input type="text" id="txt" placeholder="Type here → Send"
@@ -345,7 +372,15 @@
   <!-- ================= PAD ================= -->
   <section class="tabpane" data-tab="pad">
     <div class="card">
-      <div class="sec">Touchpad <span class="note">— drag to move · tap to click · hold for right-click · 2 fingers to scroll</span></div>
+      <div class="row">
+        <button data-k="BACK">↩ Back</button>
+        <button data-k="HOME">⌂ Home</button>
+        <button data-sys="voldown">🔉 Vol −</button>
+        <button data-sys="volup">🔊 Vol +</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec">Touchpad <span class="note">— drag to move · tap to click · long-press to right-click · 2 fingers to scroll</span></div>
       <div class="pad" id="pad">
         <div class="hint" id="padhint">drag · tap · long-press · 2-finger scroll</div>
         <div class="cursor" id="cursor" style="left:50%;top:50%;opacity:1"></div>
@@ -359,8 +394,8 @@
         <button id="click">Click</button>
         <button id="dclick">Double</button>
         <button id="rclick">Right</button>
-        <button id="hold" aria-pressed="false">Hold</button>
-        <button id="center" class="ghost">Center</button>
+        <button id="hold" aria-pressed="false" title="Latches the left mouse button down for dragging">Drag lock</button>
+        <button id="center" class="ghost" title="Resets this dot's on-screen position only — does not move the projector's cursor">Recenter dot</button>
       </div>
     </div>
 
@@ -375,19 +410,6 @@
 
   <!-- ================= APPS ================= -->
   <section class="tabpane" data-tab="apps">
-    <div class="card" id="cast-card">
-      <div class="sec">Cast or mirror</div>
-      <p class="advanced-note">Uses receivers already built into the projector. TVRemoteWeb temporarily enables only your selection; Stop casting disables it again and releases its RAM.</p>
-      <div class="apps">
-        <button data-cast="miracast">▣ Android / Windows<small>Miracast · LAN remote pauses</small></button>
-        <button data-cast="airplay">◉ iPhone / Mac<small>AirPlay · full screen</small></button>
-        <button data-cast="dlna">▶ Media app<small>DLNA · lowest streaming load</small></button>
-        <button data-cast="stop" class="danger">■ Stop casting<small>Release receiver RAM</small></button>
-      </div>
-      <p class="advanced-note" style="margin-top:9px">Miracast switches Wi‑Fi into direct-display mode, so this page pauses until casting ends. AirPlay and DLNA keep the LAN remote available.</p>
-      <div class="settings-status" id="cast-status">Checking built-in receivers…</div>
-    </div>
-
     <div class="card">
       <div class="sec">TV Apps
         <span class="note">— tap to launch · long-press to pin</span>
@@ -402,6 +424,19 @@
       <div class="sec">Other Apps</div>
       <div class="apps" id="apps-other"></div>
     </div>
+
+    <details class="card" id="cast-card">
+      <summary class="sec" style="cursor:pointer;list-style:none">Cast or mirror <span class="note">— tap to expand</span></summary>
+      <p class="advanced-note">Uses receivers already built into the projector. TVRemoteWeb temporarily enables only your selection; Stop casting disables it again and releases its RAM.</p>
+      <div class="apps">
+        <button data-cast="miracast">▣ Android / Windows<small>Miracast · LAN remote pauses</small></button>
+        <button data-cast="airplay">◉ iPhone / Mac<small>AirPlay · full screen</small></button>
+        <button data-cast="dlna">▶ Media app<small>DLNA · lowest streaming load</small></button>
+        <button data-cast="stop" class="danger">■ Stop casting<small>Release receiver RAM</small></button>
+      </div>
+      <p class="advanced-note" style="margin-top:9px">Miracast switches Wi‑Fi into direct-display mode, so this page pauses until casting ends. AirPlay and DLNA keep the LAN remote available.</p>
+      <div class="settings-status" id="cast-status">Checking built-in receivers…</div>
+    </details>
 
     <div class="card">
       <div class="sec">Open URL on SmartTube</div>
@@ -455,11 +490,13 @@
   <section class="tabpane" data-tab="align">
     <div class="card">
       <div class="sec">Auto align screen</div>
-      <p class="ks-copy">Prepares a centered 55% test image, then detects the blue projection and physical screen from one photo. You review the proposed best fit before applying it.</p>
+      <p class="ks-copy"><strong>Camera</strong> switches the projector to a centered 55% test image before it opens your camera — it changes the live picture right away. <strong>Use photo</strong> and <strong>Edit current</strong> do not change anything until you apply. All three end at the same review-and-apply step.</p>
       <div class="ks-auto-actions">
-        <label class="file-btn acc" id="ks-auto-camera" for="ks-camera">📷 Start with camera</label>
-        <label class="file-btn" id="ks-auto-photo" for="ks-photo">Use photo</label>
+        <label class="file-btn acc" id="ks-auto-camera" for="ks-camera">📷 Camera<small>Resets to test image</small></label>
+        <label class="file-btn" id="ks-auto-photo" for="ks-photo">Use photo<small>No live change</small></label>
+        <button class="file-btn ghost" id="ks-auto-edit"><span>✏️ Edit current</span><small>No live change</small></button>
       </div>
+      <button id="ks-cancel-setup" class="ghost danger" hidden style="width:100%;margin-top:8px">Cancel camera setup &amp; restore</button>
       <button id="ks-manual-toggle" class="ghost ks-manual-toggle" aria-expanded="false">Manual & advanced alignment</button>
       <div class="ks-status" id="ks-auto-status" role="status" aria-live="polite">Loading projector keystone state…</div>
     </div>
@@ -624,7 +661,7 @@
     <div class="card">
       <div class="sec">System</div>
       <div class="grid2">
-        <button data-sys="settings">⚙ Settings</button>
+        <button data-sys="settings">⚙ Projector settings</button>
         <button data-sys="wifi_settings">📶 Wi-Fi</button>
         <button data-sys="notif">🔔 Notifications</button>
         <button data-sys="screen_off" class="ghost">◐ Screen Off</button>
@@ -680,6 +717,7 @@ document.getElementById('host').textContent = location.host;
 /* ---------------- tabs ---------------- */
 const panes = document.querySelectorAll('.tabpane');
 const navBtns = document.querySelectorAll('nav button[data-go]');
+let hdmiLoaded = false;
 function showTab(name, remember) {
   let found = false;
   panes.forEach(p => { const on = p.dataset.tab === name; p.classList.toggle('on', on); if (on) found = true; });
@@ -688,6 +726,7 @@ function showTab(name, remember) {
   window.scrollTo(0, 0);
   if (remember !== false) localStorage.setItem('tab', name);
   if (name === 'stats' && !statsLoaded) { statsLoaded = true; pullStats(false); }
+  if (name === 'remote' && !hdmiLoaded) { hdmiLoaded = true; hdmiRequest('status'); }
   if (name === 'tools' && !settingsLoaded) { settingsLoaded = true; pullSettings(); }
   if (name === 'tools') pullBluetoothStatus();
   if (name === 'apps') {
@@ -705,16 +744,22 @@ document.getElementById('global-keyboard').addEventListener('click', () => {
 });
 
 /* ---------------- WebSocket to native mousedaemon (port 8788) ---------------- */
-let ws = null, wsReady = false, wsPending = [];
+let ws = null, wsReady = false, wsPending = [], wsReconnectTimer = null;
+function scheduleWsConnect() {
+  if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+  wsReconnectTimer = document.hidden ? null : setTimeout(wsConnect, 1500);
+}
 function wsConnect() {
+  wsReconnectTimer = null;
+  if (document.hidden || ws) return;
   const url = `ws://${location.hostname}:8788/`;
-  try { ws = new WebSocket(url); } catch (e) { setTimeout(wsConnect, 1500); return; }
+  try { ws = new WebSocket(url); } catch (e) { scheduleWsConnect(); return; }
   ws.onopen = () => {
     wsReady = true; ws.send('T ' + token);
     for (const m of wsPending) ws.send(m);
     wsPending = []; document.body.dataset.ws = 'ok';
   };
-  ws.onclose = () => { wsReady = false; ws = null; document.body.dataset.ws = 'off'; setTimeout(wsConnect, 1500); };
+  ws.onclose = () => { wsReady = false; ws = null; document.body.dataset.ws = 'off'; scheduleWsConnect(); };
   ws.onerror = () => { try { ws.close(); } catch(e){} };
 }
 wsConnect();
@@ -726,13 +771,24 @@ function wsSend(m) {
 
 /* ---------------- CGI call ---------------- */
 const sEl = document.getElementById('s');
+let sFlashTimer = null;
 async function call(qs) {
-  sEl.textContent = '…';
+  sEl.textContent = '…'; sEl.classList.remove('err');
   try {
     const r = await fetch('/cgi-bin/remote.cgi?' + qs + (token ? '&token=' + encodeURIComponent(token) : ''), {cache:'no-store'});
     const j = await r.json();
     sEl.textContent = j.detail || j.status;
-  } catch (e) { sEl.textContent = 'err: ' + e.message; }
+    navigator.vibrate && navigator.vibrate(8);
+    sEl.classList.add('flash');
+    if (sFlashTimer) clearTimeout(sFlashTimer);
+    sFlashTimer = setTimeout(() => sEl.classList.remove('flash'), 220);
+    return true;
+  } catch (e) {
+    sEl.textContent = 'err: ' + e.message;
+    sEl.classList.add('err');
+    navigator.vibrate && navigator.vibrate([20, 40, 20]);
+    return false;
+  }
 }
 
 document.querySelectorAll('button[data-k]').forEach(b   => b.addEventListener('click', () => call('k='   + b.dataset.k)));
@@ -742,12 +798,67 @@ document.querySelectorAll('button[data-sys]').forEach(b => b.addEventListener('c
 }));
 document.querySelectorAll('button[data-app]').forEach(b => b.addEventListener('click', () => call('app=' + b.dataset.app)));
 
+/* ---------------- press-and-hold repeat for D-pad + volume ---------------- */
+function attachHoldRepeat(el, action, delay, interval) {
+  let timer = null;
+  const stop = () => { if (timer) clearTimeout(timer); timer = null; };
+  const start = () => {
+    stop();
+    timer = setTimeout(function tick() {
+      action();
+      timer = setTimeout(tick, interval);
+    }, delay);
+  };
+  el.addEventListener('pointerdown', e => { if (e.button > 0) return; start(); });
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointerleave', stop);
+  el.addEventListener('pointercancel', stop);
+}
+['UP','DOWN','LEFT','RIGHT'].forEach(k => {
+  const btn = document.querySelector('button[data-k="' + k + '"]');
+  if (btn) attachHoldRepeat(btn, () => call('k=' + k), 420, 140);
+});
+['voldown','volup'].forEach(sys => {
+  document.querySelectorAll('button[data-sys="' + sys + '"]').forEach(btn => {
+    attachHoldRepeat(btn, () => call('sys=' + sys), 420, 160);
+  });
+});
+
+/* ---------------- projector HDMI inputs ---------------- */
+const hdmiStatus = document.getElementById('hdmi-status');
+const hdmiButtons = [...document.querySelectorAll('[data-hdmi]')];
+async function hdmiRequest(action) {
+  hdmiButtons.forEach(button => { button.disabled = true; });
+  hdmiStatus.textContent = action === 'status' ? 'Checking HDMI support…' : 'Switching input…';
+  hdmiStatus.className = 'settings-status';
+  try {
+    const query = new URLSearchParams({action, token});
+    const response = await fetch('/cgi-bin/hdmi.cgi?' + query, {cache:'no-store'});
+    const result = await response.json();
+    if (!response.ok || result.status === 'err') throw new Error(result.detail || 'HTTP ' + response.status);
+    hdmiStatus.textContent = action === 'status'
+      ? (result.available ? 'HDMI 1, 2 and 3 are available.' : 'AwLiveTV is not installed in this firmware.')
+      : result.detail;
+    hdmiStatus.className = 'settings-status ' + (result.available ? 'ok' : 'err');
+  } catch (error) {
+    hdmiStatus.textContent = 'HDMI control failed: ' + error.message;
+    hdmiStatus.className = 'settings-status err';
+  } finally {
+    hdmiButtons.forEach(button => { button.disabled = false; });
+  }
+}
+hdmiButtons.forEach(button => button.addEventListener('click', () => hdmiRequest(button.dataset.hdmi)));
+
 /* ---------------- text input ---------------- */
-document.getElementById('send').addEventListener('click', () => {
+document.getElementById('send').addEventListener('click', async () => {
   const el = document.getElementById('txt');
+  const sendBtn = document.getElementById('send');
   if (!el.value) return;
-  call('t=' + encodeURIComponent(el.value));
-  el.value = '';
+  sendBtn.disabled = true;
+  const ok = await call('t=' + encodeURIComponent(el.value));
+  sendBtn.disabled = false;
+  if (ok) el.value = '';
+  else { el.focus(); el.select(); }
 });
 document.getElementById('txt').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('send').click(); }
@@ -829,7 +940,7 @@ function updateCursorVisual() {
 updateCursorVisual();
 
 let touches = new Map();
-let startTime = 0, moved = 0, scrollAccum = 0;
+let startTime = 0, moved = 0, scrollAccum = 0, wentMultiTouch = false;
 let longPressTimer = null;
 let pendingDx = 0, pendingDy = 0, sendTimer = null;
 
@@ -849,7 +960,7 @@ function wsWheel(n) { if (!wsSend('W ' + n)) call('mw=' + n); }
 let mouseHeld = false;
 const holdBtn = document.getElementById('hold');
 function renderMouseHold() {
-  holdBtn.textContent = mouseHeld ? 'Release' : 'Hold';
+  holdBtn.textContent = mouseHeld ? 'Release drag' : 'Drag lock';
   holdBtn.classList.toggle('on', mouseHeld);
   holdBtn.setAttribute('aria-pressed', mouseHeld ? 'true' : 'false');
 }
@@ -873,11 +984,14 @@ pad.addEventListener('touchstart', e => {
   document.body.classList.add('padding');
   for (const t of e.changedTouches) touches.set(t.identifier, {x:t.clientX, y:t.clientY});
   if (touches.size === 1) {
-    startTime = Date.now(); moved = 0;
+    startTime = Date.now(); moved = 0; wentMultiTouch = false;
     longPressTimer = setTimeout(() => {
       if (moved < 8) { wsClick('R'); navigator.vibrate && navigator.vibrate(30); }
       longPressTimer = null;
     }, 500);
+  } else {
+    wentMultiTouch = true;
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
   }
 }, PASS);
 
@@ -920,7 +1034,7 @@ function endTouch(e) {
   if (touches.size === 0) {
     document.body.classList.remove('padding');
     const dur = Date.now() - startTime;
-    if (!mouseHeld && moved < 10 && dur < 300) { wsClick('L'); navigator.vibrate && navigator.vibrate(10); }
+    if (!mouseHeld && !wentMultiTouch && moved < 10 && dur < 300) { wsClick('L'); navigator.vibrate && navigator.vibrate(10); }
   }
 }
 pad.addEventListener('touchend',    endTouch, PASS);
@@ -1299,12 +1413,12 @@ function renderProcs(procs) {
       '<span class="name" title="' + name + '">' + name + '</span>' +
       '<span class="cpu' + (cpu > 20 ? ' hot' : '') + '">' + cpu + '%</span>' +
       '<span class="mem">' + esc(p.mem) + '%</span>' +
-      '<button data-kill="' + esc(p.pid) + '">Kill</button>' +
+      '<button data-kill="' + esc(p.pid) + '" data-kill-name="' + name + '">Kill</button>' +
     '</div>';
   }).join('');
   procList.querySelectorAll('[data-kill]').forEach(b => {
     b.addEventListener('click', () => {
-      if (!confirm('Kill PID ' + b.dataset.kill + '?')) return;
+      if (!confirm('Kill ' + b.dataset.killName + ' (PID ' + b.dataset.kill + ')?')) return;
       killProcess(b.dataset.kill);
     });
   });
@@ -1423,6 +1537,8 @@ procVault.addEventListener('toggle', () => { if (!procVault.open) lockProcessMon
 /* pause live polling when the tab is hidden */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) releaseMouseHeld();
+  if (document.hidden && ws) { ws.close(); }
+  if (!document.hidden && !ws) wsConnect();
   if (document.hidden && liveTimer) { clearInterval(liveTimer); liveTimer = null; liveBtn.textContent = 'Live: off'; liveBtn.classList.remove('on'); }
 });
 
@@ -1450,7 +1566,8 @@ let keystoneLoaded = false;
 let ksCurrent = null, ksPhotoBase = null, ksProposal = null, ksAnnotation = null, ksImage = null, ksImageUrl = '';
 let ksLayer = 'screen', ksDragging = null;
 let ksReviewed = {screen:new Set(), projection:new Set()};
-let ksAutoMode = false, ksAutoPreparePromise = null;
+let ksAutoMode = false, ksAutoPreparePromise = null, ksGridOpen = false;
+const ksCancelSetup = document.getElementById('ks-cancel-setup');
 const ksStatus = document.getElementById('ks-status');
 const ksQuickStatus = document.getElementById('ks-quick-status');
 const ksAutoStatus = document.getElementById('ks-auto-status');
@@ -1532,7 +1649,7 @@ async function loadKeystonePhoto(event) {
       try {
         const prepareError = ksAutoPreparePromise ? await ksAutoPreparePromise : null;
         if (prepareError) throw prepareError;
-        await ksRequest('view_close');
+        if (ksGridOpen) { await ksRequest('view_close'); ksGridOpen = false; ksCancelSetup.hidden = true; }
         ksSetStatus('Photo ready. Detecting the projection and screen on this phone…');
         ksDetect.click();
       } catch (error) {
@@ -1546,12 +1663,15 @@ async function loadKeystonePhoto(event) {
 document.getElementById('ks-photo').addEventListener('change', loadKeystonePhoto);
 document.getElementById('ks-camera').addEventListener('change', loadKeystonePhoto);
 
+let ksManualMode = false;
 function showManualAlignment(show) {
   document.querySelectorAll('.ks-manual-only').forEach(element => { element.hidden = !show; });
   const toggle = document.getElementById('ks-manual-toggle');
   toggle.setAttribute('aria-expanded', String(show));
   toggle.textContent = show ? 'Hide manual & advanced alignment' : 'Manual & advanced alignment';
   if (show) ksAutoMode = false;
+  ksManualMode = show;
+  ksCanvas.classList.toggle('editing', show);
 }
 
 document.getElementById('ks-manual-toggle').addEventListener('click', () => {
@@ -1566,20 +1686,51 @@ ksEditPoints.addEventListener('click', () => {
 async function prepareAutoAlignment() {
   ksSetStatus('Preparing the centered 55% test image…');
   const result = await ksRequest('calibrate', {size:'55', confirmation:'CALIBRATE'});
+  ksGridOpen = true; ksCancelSetup.hidden = false;
   ksCurrent = result.current; ksRestore.disabled = false; ksProposal = null; ksApply.disabled = true;
   ksZoom.value = '55'; ksZoomValue.textContent = '55%';
   document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
   const grid = await ksRequest('view_open');
-  ksSetStatus(result.detail + '. ' + grid.detail + '. Take a photo with the full screen frame visible.', 'ok');
+  ksSetStatus(result.detail + '. ' + grid.detail + '. Take a photo with the full screen frame visible, or Cancel to leave the picture unchanged.', 'ok');
 }
 
-['ks-auto-camera','ks-auto-photo'].forEach(id => document.getElementById(id).addEventListener('click', () => {
+async function cancelAutoSetup(reason) {
+  const wasOpen = ksGridOpen;
+  ksAutoMode = false; ksAutoPreparePromise = null; ksGridOpen = false; ksCancelSetup.hidden = true;
+  if (!wasOpen) return;
+  ksSetStatus('Restoring the picture shown before camera setup…');
+  try {
+    await ksRequest('view_close');
+    await ksRequest('restore', {confirmation:'RESTORE'});
+    await pullKeystoneStatus();
+    ksSetStatus(reason || 'Camera setup canceled. Previous picture restored.', 'ok');
+  } catch (error) {
+    ksSetStatus('Could not fully restore the previous picture: ' + error.message, 'err');
+  }
+}
+ksCancelSetup.addEventListener('click', () => cancelAutoSetup('Camera setup canceled. Previous picture restored.'));
+document.getElementById('ks-camera').addEventListener('cancel', () => cancelAutoSetup('Camera closed without a photo. Previous picture restored.'));
+
+document.getElementById('ks-auto-camera').addEventListener('click', () => {
   ksAutoMode = true;
   ksAutoPreparePromise = prepareAutoAlignment().then(() => null, error => {
     ksSetStatus('Could not prepare the 55% test image: ' + error.message, 'err');
+    ksGridOpen = false; ksCancelSetup.hidden = true;
     return error;
   });
-}));
+});
+
+document.getElementById('ks-auto-photo').addEventListener('click', () => {
+  ksAutoMode = true;
+  ksAutoPreparePromise = null;
+  ksSetStatus('Choose a photo of the current picture — nothing on the projector changes until you apply.', 'ok');
+});
+
+document.getElementById('ks-auto-edit').addEventListener('click', () => {
+  ksAutoMode = false; ksAutoPreparePromise = null;
+  showManualAlignment(true);
+  ksSetStatus('Editing the current correction directly. Nothing changes on the projector until you apply.', 'ok');
+});
 
 document.querySelectorAll('.ks-manual-only label[for="ks-camera"], .ks-manual-only label[for="ks-photo"]').forEach(label => {
   label.addEventListener('click', () => { ksAutoMode = false; ksAutoPreparePromise = null; });
@@ -1612,7 +1763,7 @@ function drawKeystoneOverlay() {
   ctx.drawImage(ksImage, 0, 0, ksCanvas.width, ksCanvas.height);
   drawQuad(ctx, ksAnnotation.screen, '#42d77d', 'SCREEN', ksCanvas.width, ksCanvas.height, ksLayer === 'screen');
   drawQuad(ctx, ksAnnotation.projection, '#4c9dff', 'PROJECTION', ksCanvas.width, ksCanvas.height, ksLayer === 'projection');
-  ksCanvas.hidden = false; ksCanvas.classList.add('editing'); ksPlaceholder.hidden = true;
+  ksCanvas.hidden = false; ksCanvas.classList.toggle('editing', ksManualMode); ksPlaceholder.hidden = true;
 }
 
 function drawKeystoneLoupe(point) {

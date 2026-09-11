@@ -113,7 +113,7 @@ if [ ! -f "$STATE/no-splash" ]; then
     sleep 25
     [ -f "$STATE/no-splash" ] && exit 0
     am start -a android.intent.action.VIEW \
-      -d "http://127.0.0.1:${PORT}/cgi-bin/qr.cgi?mode=splash" \
+      -d "http://127.0.0.1:${PORT}/cgi-bin/qr.cgi?mode=splash&boot=1" \
       -c android.intent.category.BROWSABLE \
       --activity-clear-top --activity-new-task >/dev/null 2>&1
     echo "[$("$BB" date)] splash launched" >> "$STATE/service.log" 2>/dev/null

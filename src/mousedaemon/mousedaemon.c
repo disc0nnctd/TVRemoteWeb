@@ -45,9 +45,11 @@
 #include <signal.h>
 #include <dirent.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <poll.h>
 #include <linux/input.h>
 #include <linux/input-event-codes.h>
 #include <linux/uinput.h>
@@ -372,22 +374,49 @@ int main(void){
     fprintf(stderr, "mousedaemon: listening on ws://0.0.0.0:%d via %s%s\n",
             port, chosen, expected_token ? " (token required)" : " (NO AUTH)");
 
+    /* Keep one active controller, but continue polling the listening socket.
+     * A newly opened remote replaces a stale/background browser connection
+     * immediately instead of falling back to slow shell mouse commands. */
+    int cfd = -1;
+    char buf[8192];
     for (;;) {
-        int cfd = accept(lfd, NULL, NULL);
-        if (cfd < 0) { if (errno == EINTR) continue; perror("mousedaemon: accept"); break; }
-        int nd = 1; setsockopt(cfd, IPPROTO_TCP, 1, &nd, sizeof(nd)); /* TCP_NODELAY */
-        if (ws_handshake(cfd) == 0) {
-            authed = expected_token ? 0 : 1;
-            char buf[8192];
-            for (;;) {
-                int r = ws_recv(cfd, buf, sizeof(buf));
-                if (r < 0) break;
-                if (r > 0) handle_cmd(buf);
+        struct pollfd fds[2] = {
+            {.fd = lfd, .events = POLLIN},
+            {.fd = cfd, .events = cfd >= 0 ? POLLIN : 0}
+        };
+        int ready = poll(fds, 2, -1);
+        if (ready < 0) { if (errno == EINTR) continue; perror("mousedaemon: poll"); break; }
+
+        if (fds[0].revents & POLLIN) {
+            int nfd = accept(lfd, NULL, NULL);
+            if (nfd < 0) { if (errno != EINTR) perror("mousedaemon: accept"); continue; }
+            int nd = 1; setsockopt(nfd, IPPROTO_TCP, TCP_NODELAY, &nd, sizeof(nd));
+            struct timeval timeout = {.tv_sec = 2, .tv_usec = 0};
+            setsockopt(nfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            setsockopt(nfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+            if (ws_handshake(nfd) == 0) {
+                timeout.tv_sec = 0;
+                setsockopt(nfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+                setsockopt(nfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+                if (cfd >= 0) close(cfd);
+                cfd = nfd;
+                authed = expected_token ? 0 : 1;
+            } else {
+                close(nfd);
             }
+            continue;
         }
-        close(cfd);
-        authed = 0;
+
+        if (cfd >= 0 && (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL))) {
+            close(cfd); cfd = -1; authed = 0; continue;
+        }
+        if (cfd >= 0 && (fds[1].revents & POLLIN)) {
+            int r = ws_recv(cfd, buf, sizeof(buf));
+            if (r < 0) { close(cfd); cfd = -1; authed = 0; }
+            else if (r > 0) handle_cmd(buf);
+        }
     }
+    if (cfd >= 0) close(cfd);
     close(lfd);
     if (owns_uinput) ioctl(ev_fd, UI_DEV_DESTROY);
     close(ev_fd);

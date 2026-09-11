@@ -57,9 +57,9 @@ PICTURE_CHANNELS = {
 }
 GAMMA_LABELS = ("1.8", "2.0", "2.1", "2.2", "2.4")
 
-# Only files that are safe to refresh on a running installation. ABI selection,
-# token generation, and APK installation remain responsibilities of Magisk's
-# installer and are deliberately excluded from the live-deploy tool.
+# Only files that are safe to refresh on a running installation. Token
+# generation remains the installer's responsibility; newer bundled launcher
+# APKs are upgraded in place without requiring another Magisk flash.
 RUNTIME_ASSETS = {
     "module.prop": 0o644,
     "service.sh": 0o755,
@@ -68,9 +68,12 @@ RUNTIME_ASSETS = {
     "files/keystone.js": 0o644,
     "files/qrcode.js": 0o644,
     "files/pqcli.dex": 0o644,
+    "files/app/tvremoteweb-qr.apk": 0o644,
+    "files/app/versionCode": 0o644,
     "files/cgi-bin/apps.cgi": 0o755,
     "files/cgi-bin/bluetooth.cgi": 0o755,
     "files/cgi-bin/cast.cgi": 0o755,
+    "files/cgi-bin/hdmi.cgi": 0o755,
     "files/cgi-bin/keystone.cgi": 0o755,
     "files/cgi-bin/qr.cgi": 0o755,
     "files/cgi-bin/remote.cgi": 0o755,
@@ -83,13 +86,23 @@ INSPECT_ASSETS = (
     "files/remote.html",
     "files/keystone.js",
     "files/pqcli.dex",
+    "files/app/tvremoteweb-qr.apk",
     "files/cgi-bin/bluetooth.cgi",
     "files/cgi-bin/cast.cgi",
+    "files/cgi-bin/hdmi.cgi",
     "files/cgi-bin/keystone.cgi",
     "files/cgi-bin/remote.cgi",
     "files/cgi-bin/settings.cgi",
     "files/cgi-bin/stats.cgi",
 )
+
+
+def _mouse_binary_for_abi(abi: str) -> str | None:
+    if abi.startswith(("arm64", "aarch64")):
+        return "files/bin/mousedaemon-arm64"
+    if abi.startswith(("armeabi", "armv7")):
+        return "files/bin/mousedaemon-armv7"
+    return None
 
 DISPLAY_PROPS = {
     "lb": ("persist.display.keystone_lbx", "persist.display.keystone_lby"),
@@ -619,6 +632,8 @@ def inspect_tvremoteweb_install() -> str:
         "ps -A -o PID,ARGS 2>/dev/null | grep -E 'httpd.*8787|mousedaemon' | grep -v grep || true",
         root=True,
     ).splitlines()
+    launcher_dump = _adb_shell(serial, "dumpsys package com.tvremoteweb.qr 2>/dev/null", root=True)
+    launcher_match = re.search(r"versionCode=(\d+)", launcher_dump)
 
     assets: dict[str, dict[str, Any]] = {}
     for relative in INSPECT_ASSETS:
@@ -638,12 +653,28 @@ def inspect_tvremoteweb_install() -> str:
             "live_matches_source": None if live is None else bool(source_hash and live_hash == source_hash),
         }
 
+    abi = _adb_shell(serial, "getprop ro.product.cpu.abi", root=True)
+    mouse_relative = _mouse_binary_for_abi(abi)
+    if mouse_relative:
+        mouse_source_hash = _local_hash(MODULE_SOURCE / mouse_relative)
+        mouse_installed_hash = _remote_hash(serial, f"{REMOTE_MODULE}/files/bin/mousedaemon")
+        assets["files/bin/mousedaemon"] = {
+            "abi": abi,
+            "source_asset": mouse_relative,
+            "source": mouse_source_hash,
+            "installed": mouse_installed_hash,
+            "live": mouse_installed_hash,
+            "installed_matches_source": bool(mouse_source_hash and mouse_installed_hash == mouse_source_hash),
+            "live_matches_source": bool(mouse_source_hash and mouse_installed_hash == mouse_source_hash),
+        }
+
     return _json(
         {
             "serial": serial,
             "module": module_prop or None,
             "legacy_module": legacy_state,
             "processes": processes,
+            "launcher_version_code": int(launcher_match.group(1)) if launcher_match else None,
             "assets": assets,
         }
     )
@@ -681,10 +712,37 @@ def deploy_tvremoteweb_runtime(confirmation: str) -> str:
                 f"chmod {mode:o} {shlex.quote(destination)}",
                 root=True,
             )
+        abi = _adb_shell(serial, "getprop ro.product.cpu.abi", root=True)
+        mouse_relative = _mouse_binary_for_abi(abi)
+        if not mouse_relative:
+            raise RuntimeError(f"no live-deploy mousedaemon build for device ABI: {abi}")
+        mouse_source = MODULE_SOURCE / mouse_relative
+        mouse_temp = "/data/local/tmp/tvremoteweb-deploy-mousedaemon"
+        temporary.append(mouse_temp)
+        _run([ADB, "-s", serial, "push", str(mouse_source), mouse_temp], timeout=30)
+        mouse_destination = f"{REMOTE_MODULE}/files/bin/mousedaemon"
+        mouse_staged = f"{mouse_destination}.new"
+        _adb_shell(
+            serial,
+            f"cp {shlex.quote(mouse_temp)} {shlex.quote(mouse_staged)}; "
+            f"chmod 755 {shlex.quote(mouse_staged)}; "
+            f"mv -f {shlex.quote(mouse_staged)} {shlex.quote(mouse_destination)}",
+            root=True,
+        )
     finally:
         if temporary:
             quoted = " ".join(shlex.quote(path) for path in temporary)
             _adb_shell(serial, f"rm -f {quoted}", root=True, timeout=10)
+
+    bundled_launcher_version = int((MODULE_SOURCE / "files/app/versionCode").read_text().strip())
+    launcher_dump = _adb_shell(serial, "dumpsys package com.tvremoteweb.qr 2>/dev/null", root=True)
+    launcher_match = re.search(r"versionCode=(\d+)", launcher_dump)
+    installed_launcher_version = int(launcher_match.group(1)) if launcher_match else 0
+    if installed_launcher_version < bundled_launcher_version:
+        _run(
+            [ADB, "-s", serial, "install", "-r", str(MODULE_SOURCE / "files/app/tvremoteweb-qr.apk")],
+            timeout=60,
+        )
 
     _adb_shell(
         serial,

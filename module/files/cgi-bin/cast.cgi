@@ -74,6 +74,7 @@ start_miracast_watchdog() {
     done
     am force-stop "$MIRACAST_PKG" >/dev/null 2>&1
     restore_disabled "$MIRACAST_PKG"
+    svc wifi enable >/dev/null 2>&1
     rm -f "$WATCHDOG_PID"
   ) </dev/null >/dev/null 2>&1 &
   printf '%s\n' "$!" > "$WATCHDOG_PID"
@@ -119,8 +120,9 @@ case "$action" in
     stop_pkg "$MIRACAST_PKG"
     stop_pkg "$AIRPLAY_PKG"
     stop_pkg "$DLNA_PKG"
+    svc wifi enable >/dev/null 2>&1
     input keyevent KEYCODE_HOME >/dev/null 2>&1
-    detail="Casting stopped and receiver memory released." ;;
+    detail="Casting stopped, Wi-Fi restored, and receiver memory released." ;;
   *) status="err"; detail="Unknown casting action." ;;
 esac
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.tvremoteweb.qr"
-    android:versionCode="2"
+    android:versionCode="4"
     android:versionName="1.1">
 
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="30"/>
@@ -25,6 +25,62 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.tvremoteweb.qr.HdmiActivity"
+            android:label="@string/hdmi_name"
+            android:icon="@drawable/hdmi_icon"
+            android:banner="@drawable/hdmi_banner"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.tvremoteweb.qr.Hdmi1Activity"
+            android:label="@string/hdmi_1_name"
+            android:icon="@drawable/hdmi_icon"
+            android:banner="@drawable/hdmi_1_banner"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.tvremoteweb.qr.Hdmi2Activity"
+            android:label="@string/hdmi_2_name"
+            android:icon="@drawable/hdmi_icon"
+            android:banner="@drawable/hdmi_2_banner"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.tvremoteweb.qr.Hdmi3Activity"
+            android:label="@string/hdmi_3_name"
+            android:icon="@drawable/hdmi_icon"
+            android:banner="@drawable/hdmi_3_banner"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>

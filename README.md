@@ -54,15 +54,21 @@ pairing dance. This is a web page served by the box itself.
 - **Real mouse touchpad** — a native daemon writes `struct input_event`
   straight to an evdev node over a WebSocket. Roughly 10 ms per motion event
   versus ~80 ms for the shell-out path it replaced, which is the difference
-  between a usable cursor and an unusable one.
+  between a usable cursor and an unusable one. A newly visible remote takes
+  over immediately, while hidden tabs release the native connection.
 - **Text input** — type on the phone keyboard instead of hunting an on-screen grid
 - **Persistent keyboard shortcut** — open text input from any remote tab
 - **Latched mouse Hold/Release** — drag Android objects with the real pointer
+- **HDMI source control** — choose HDMI 1/2/3 from the web remote or directly
+  from separate HDMI 1/2/3 LTV Launcher tiles; an HDMI Inputs tile opens the
+  full firmware source picker
 - **App launcher** — enumerated live from the device; long-press to pin favourites
 - **Send a URL to the TV** — paste a link, it opens in the app you choose
 - **On-demand casting** — launch an installed Miracast, AirPlay, or DLNA
   firmware receiver from the Apps tab, then stop it to release its RAM; the
-  module adds no resident casting service
+  module adds no resident casting service. Reopening the projector's Phone
+  Remote tile stops casting and restores Wi-Fi when Miracast took LAN control
+  offline.
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
   storage, uptime
 - **Password-gated process manager** — collapsed at the bottom of Tools; enter
@@ -84,6 +90,9 @@ pairing dance. This is a web page served by the box itself.
 
 - Android TV / Android 7+ with **Magisk** root
 - BusyBox (Magisk's built-in one is used)
+
+Firmware-specific HDMI, casting, Bluetooth, Play Store, and recovery notes are
+kept in [Beem 470 setup and recovery](docs/beem470-setup.md).
 - Phone and TV on the same LAN
 
 ## Install
