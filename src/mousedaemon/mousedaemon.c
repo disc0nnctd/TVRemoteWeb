@@ -304,15 +304,14 @@ static int ws_recv(int cfd, char* buf, int max){
 }
 
 static const char* expected_token = NULL;
-static int authed = 0;
-static void handle_cmd(char* s){
+static void handle_cmd(char* s, int* authed){
     if (!s || !*s) return;
     char* end = s + strlen(s);
     while (end > s && (*(end-1) == '\n' || *(end-1) == '\r' || *(end-1) == ' ')) end--;
     *end = 0;
-    if (!authed) {
+    if (!*authed) {
         if (s[0] == 'T' && s[1] == ' ') {
-            if (!expected_token || strcmp(s + 2, expected_token) == 0) authed = 1;
+            if (!expected_token || strcmp(s + 2, expected_token) == 0) *authed = 1;
         }
         return;                                     /* drop everything until authed */
     }
@@ -374,17 +373,21 @@ int main(void){
     fprintf(stderr, "mousedaemon: listening on ws://0.0.0.0:%d via %s%s\n",
             port, chosen, expected_token ? " (token required)" : " (NO AUTH)");
 
-    /* Keep one active controller, but continue polling the listening socket.
-     * A newly opened remote replaces a stale/background browser connection
-     * immediately instead of falling back to slow shell mouse commands. */
-    int cfd = -1;
+    /* Several phones may hold the remote open at once. Each connection logs
+     * in on its own; when every slot is taken the oldest connection (usually
+     * a stale background tab) makes room for the newcomer. */
+    enum { MAX_CLIENTS = 6 };
+    int cfd[MAX_CLIENTS], cauth[MAX_CLIENTS];
+    unsigned long cage[MAX_CLIENTS], next_age = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) { cfd[i] = -1; cauth[i] = 0; cage[i] = 0; }
     char buf[8192];
     for (;;) {
-        struct pollfd fds[2] = {
-            {.fd = lfd, .events = POLLIN},
-            {.fd = cfd, .events = cfd >= 0 ? POLLIN : 0}
-        };
-        int ready = poll(fds, 2, -1);
+        struct pollfd fds[1 + MAX_CLIENTS];
+        fds[0].fd = lfd; fds[0].events = POLLIN; fds[0].revents = 0;
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            fds[1 + i].fd = cfd[i]; fds[1 + i].events = POLLIN; fds[1 + i].revents = 0;
+        }
+        int ready = poll(fds, 1 + MAX_CLIENTS, -1);
         if (ready < 0) { if (errno == EINTR) continue; perror("mousedaemon: poll"); break; }
 
         if (fds[0].revents & POLLIN) {
@@ -398,25 +401,31 @@ int main(void){
                 timeout.tv_sec = 0;
                 setsockopt(nfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
                 setsockopt(nfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-                if (cfd >= 0) close(cfd);
-                cfd = nfd;
-                authed = expected_token ? 0 : 1;
+                int slot = -1;
+                for (int i = 0; i < MAX_CLIENTS; i++) if (cfd[i] < 0) { slot = i; break; }
+                if (slot < 0) {
+                    slot = 0;
+                    for (int i = 1; i < MAX_CLIENTS; i++) if (cage[i] < cage[slot]) slot = i;
+                    close(cfd[slot]);
+                }
+                cfd[slot] = nfd; cauth[slot] = expected_token ? 0 : 1; cage[slot] = ++next_age;
             } else {
                 close(nfd);
             }
             continue;
         }
 
-        if (cfd >= 0 && (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL))) {
-            close(cfd); cfd = -1; authed = 0; continue;
-        }
-        if (cfd >= 0 && (fds[1].revents & POLLIN)) {
-            int r = ws_recv(cfd, buf, sizeof(buf));
-            if (r < 0) { close(cfd); cfd = -1; authed = 0; }
-            else if (r > 0) handle_cmd(buf);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (cfd[i] < 0 || !fds[1 + i].revents) continue;
+            if (fds[1 + i].revents & POLLIN) {
+                int r = ws_recv(cfd[i], buf, sizeof(buf));
+                if (r > 0) handle_cmd(buf, &cauth[i]);
+                if (r >= 0) continue;
+            }
+            close(cfd[i]); cfd[i] = -1; cauth[i] = 0;
         }
     }
-    if (cfd >= 0) close(cfd);
+    for (int i = 0; i < MAX_CLIENTS; i++) if (cfd[i] >= 0) close(cfd[i]);
     close(lfd);
     if (owns_uinput) ioctl(ev_fd, UI_DEV_DESTROY);
     close(ev_fd);
