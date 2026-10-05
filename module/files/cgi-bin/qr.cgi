@@ -19,6 +19,15 @@ case "$QUERY_STRING" in
   *boot=1*) boot_request=1 ;;
   *) boot_request=0 ;;
 esac
+# Keystone auto-align fallback: when the vendor correction view is absent,
+# keystone.cgi raises this flag and opens the fullscreen QR app, which loads
+# this splash URL. Serve a solid cyan field for keystone.js to detect instead.
+if [ "$splash_request" = 1 ] && [ -f "$STATE/align-grid" ]; then
+  printf 'Content-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\n\r\n'
+  printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Align</title>'
+  printf '<style>html,body{margin:0;height:100%%;overflow:hidden;background:#00b4ff;cursor:none}</style></head><body></body></html>\n'
+  exit 0
+fi
 if [ "$splash_request" = 1 ] && [ "$boot_request" = 0 ]; then
   watchdog_file="$STATE/cast-watchdog.pid"
   enabled_file="$STATE/cast-enabled-by-tvremoteweb"

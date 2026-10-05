@@ -107,8 +107,13 @@ save_backup() {
 action="$(get_param action 2>/dev/null || echo status)"
 current="$(read_current 2>/dev/null || true)"
 supported=false; [ -n "$current" ] && supported=true
-view_available=false
-pm path "${CORRECTION_ACTIVITY%%/*}" >/dev/null 2>&1 && view_available=true
+# The vendor view lives in HtcSettingsBlue, which may have been debloated.
+# Fall back to a plain cyan field drawn by the bundled fullscreen QR app.
+FALLBACK_ACTIVITY="com.tvremoteweb.qr/.MainActivity"
+GRID_FLAG="$STATE/align-grid"
+view_available=false; view_kind=none
+if pm path "${CORRECTION_ACTIVITY%%/*}" >/dev/null 2>&1; then view_available=true; view_kind=vendor
+elif pm path "${FALLBACK_ACTIVITY%%/*}" >/dev/null 2>&1; then view_available=true; view_kind=fallback; fi
 
 case "$action" in
   status)
@@ -204,11 +209,17 @@ case "$action" in
       value="$(getprop "$prop")"; [ -n "$value" ] && printf '%s=%s\n' "$prop" "$value" >> "$VIEW_FILE"
     done
     chmod 600 "$VIEW_FILE"
-    am start -W -n "$CORRECTION_ACTIVITY" >/dev/null 2>&1 || respond_error "could not open correction view"
+    if [ "$view_kind" = vendor ]; then
+      am start -W -n "$CORRECTION_ACTIVITY" >/dev/null 2>&1 || respond_error "could not open correction view"
+    else
+      : > "$GRID_FLAG"
+      am start -W -n "$FALLBACK_ACTIVITY" --activity-clear-top >/dev/null 2>&1 || { rm -f "$GRID_FLAG"; respond_error "could not open alignment screen"; }
+    fi
     json_headers; printf '{"status":"ok","detail":"correction grid shown"}\n'
     ;;
   view_close)
     input keyevent KEYCODE_HOME >/dev/null 2>&1
+    if [ -f "$GRID_FLAG" ]; then rm -f "$GRID_FLAG"; am force-stop "${FALLBACK_ACTIVITY%%/*}" >/dev/null 2>&1; fi
     if [ -s "$VIEW_FILE" ]; then
       while IFS='=' read -r prop value; do
         case "$prop" in persist.display.keystone_*) setprop "$prop" "$value" ;; esac
