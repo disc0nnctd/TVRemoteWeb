@@ -490,12 +490,13 @@
   <section class="tabpane" data-tab="align">
     <div class="card">
       <div class="sec">Auto align screen</div>
-      <p class="ks-copy"><strong>Camera</strong> switches the projector to a centered 55% test image before it opens your camera — it changes the live picture right away. <strong>Use photo</strong> and <strong>Edit current</strong> do not change anything until you apply. All three end at the same review-and-apply step.</p>
+      <p class="ks-copy"><strong>Camera</strong> switches the projector to a centered 55% test image and the blue grid, then gives you an <strong>Open camera</strong> button — it changes the live picture right away. <strong>Use photo</strong> and <strong>Edit current</strong> do not change anything until you apply. All three end at the same review-and-apply step.</p>
       <div class="ks-auto-actions">
-        <label class="file-btn acc" id="ks-auto-camera" for="ks-camera">📷 Camera<small>Resets to test image</small></label>
+        <button class="file-btn acc" id="ks-auto-camera"><span>📷 Camera</span><small>Resets to test image</small></button>
         <label class="file-btn" id="ks-auto-photo" for="ks-photo">Use photo<small>No live change</small></label>
         <button class="file-btn ghost" id="ks-auto-edit"><span>✏️ Edit current</span><small>No live change</small></button>
       </div>
+      <label class="file-btn acc" id="ks-auto-shoot" for="ks-camera" hidden style="width:100%;margin-top:8px">📷 Open camera<small>Blue grid is up — photograph the whole screen</small></label>
       <button id="ks-cancel-setup" class="ghost danger" hidden style="width:100%;margin-top:8px">Cancel camera setup &amp; restore</button>
       <button id="ks-manual-toggle" class="ghost ks-manual-toggle" aria-expanded="false">Manual & advanced alignment</button>
       <div class="ks-status" id="ks-auto-status" role="status" aria-live="polite">Loading projector keystone state…</div>
@@ -1568,6 +1569,8 @@ let ksLayer = 'screen', ksDragging = null;
 let ksReviewed = {screen:new Set(), projection:new Set()};
 let ksAutoMode = false, ksAutoPreparePromise = null, ksGridOpen = false;
 const ksCancelSetup = document.getElementById('ks-cancel-setup');
+const ksAutoCamera = document.getElementById('ks-auto-camera');
+const ksAutoShoot = document.getElementById('ks-auto-shoot');
 const ksStatus = document.getElementById('ks-status');
 const ksQuickStatus = document.getElementById('ks-quick-status');
 const ksAutoStatus = document.getElementById('ks-auto-status');
@@ -1649,7 +1652,7 @@ async function loadKeystonePhoto(event) {
       try {
         const prepareError = ksAutoPreparePromise ? await ksAutoPreparePromise : null;
         if (prepareError) throw prepareError;
-        if (ksGridOpen) { await ksRequest('view_close'); ksGridOpen = false; ksCancelSetup.hidden = true; }
+        if (ksGridOpen) { await ksRequest('view_close'); ksGridOpen = false; ksCancelSetup.hidden = true; ksAutoShoot.hidden = true; }
         ksSetStatus('Photo ready. Detecting the projection and screen on this phone…');
         ksDetect.click();
       } catch (error) {
@@ -1691,12 +1694,13 @@ async function prepareAutoAlignment() {
   ksZoom.value = '55'; ksZoomValue.textContent = '55%';
   document.getElementById('ks-current').textContent = ksFmt(ksCurrent);
   const grid = await ksRequest('view_open');
-  ksSetStatus(result.detail + '. ' + grid.detail + '. Take a photo with the full screen frame visible, or Cancel to leave the picture unchanged.', 'ok');
+  ksAutoShoot.hidden = false;
+  ksSetStatus(result.detail + '. ' + grid.detail + '. Tap Open camera and photograph the full screen frame, or Cancel to leave the picture unchanged.', 'ok');
 }
 
 async function cancelAutoSetup(reason) {
   const wasOpen = ksGridOpen;
-  ksAutoMode = false; ksAutoPreparePromise = null; ksGridOpen = false; ksCancelSetup.hidden = true;
+  ksAutoMode = false; ksAutoPreparePromise = null; ksGridOpen = false; ksCancelSetup.hidden = true; ksAutoShoot.hidden = true;
   if (!wasOpen) return;
   ksSetStatus('Restoring the picture shown before camera setup…');
   try {
@@ -1711,17 +1715,26 @@ async function cancelAutoSetup(reason) {
 ksCancelSetup.addEventListener('click', () => cancelAutoSetup('Camera setup canceled. Previous picture restored.'));
 document.getElementById('ks-camera').addEventListener('cancel', () => cancelAutoSetup('Camera closed without a photo. Previous picture restored.'));
 
-document.getElementById('ks-auto-camera').addEventListener('click', () => {
-  ksAutoMode = true;
-  ksAutoPreparePromise = prepareAutoAlignment().then(() => null, error => {
+// Two steps on purpose: opening the camera backgrounds the page, and a
+// backgrounded page never sends view_open, so the grid must be up first.
+ksAutoCamera.addEventListener('click', async () => {
+  ksAutoMode = true; ksAutoPreparePromise = null; ksAutoShoot.hidden = true;
+  ksAutoCamera.disabled = true;
+  try {
+    await prepareAutoAlignment();
+  } catch (error) {
     ksSetStatus('Could not prepare the 55% test image: ' + error.message, 'err');
+    ksAutoMode = false;
+    if (ksGridOpen) await cancelAutoSetup('Setup failed: ' + error.message);
     ksGridOpen = false; ksCancelSetup.hidden = true;
-    return error;
-  });
+  } finally {
+    ksAutoCamera.disabled = false;
+  }
 });
+ksAutoShoot.addEventListener('click', () => { ksAutoMode = true; });
 
 document.getElementById('ks-auto-photo').addEventListener('click', () => {
-  ksAutoMode = true;
+  ksAutoMode = true; ksAutoShoot.hidden = true;
   ksAutoPreparePromise = null;
   ksSetStatus('Choose a photo of the current picture — nothing on the projector changes until you apply.', 'ok');
 });
