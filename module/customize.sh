@@ -83,6 +83,21 @@ if [ -f "$APK" ]; then
   fi
 fi
 
+# The "Cast" home-screen tile is its own package because the launcher shows
+# one tile per app.
+CAST_APK="$MODPATH/files/app/tvremoteweb-cast.apk"
+if [ -f "$CAST_APK" ]; then
+  CUR="$(dumpsys package com.tvremoteweb.cast 2>/dev/null | grep -m1 versionCode | sed 's/.*versionCode=\([0-9]*\).*/\1/')"
+  NEW="$(cat "$MODPATH/files/app/cast-versionCode" 2>/dev/null || echo 1)"
+  if [ -n "$CUR" ] && [ "$CUR" -ge "$NEW" ] 2>/dev/null; then
+    ui_print "- Cast tile already current (v$CUR)"
+  elif pm install -r -g "$CAST_APK" >/dev/null 2>&1; then
+    ui_print "  installed: com.tvremoteweb.cast"
+  else
+    ui_print "! Cast tile install failed (not fatal)"
+  fi
+fi
+
 # --------------------------------------------------------- permissions ----
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive "$MODPATH/files/cgi-bin" 0 0 0755 0755

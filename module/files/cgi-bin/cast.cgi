@@ -25,7 +25,9 @@ if [ -s "$TOKEN_FILE" ]; then
   [ -n "$token_full" ] && pin="$(printf '%s' "$token_full" | sha256sum | cut -c1-6)"
 fi
 qt="$(get_param token 2>/dev/null || true)"
-if [ -n "$token_full" ] && [ "$qt" != "$token_full" ] && [ "$qt" != "$pin" ]; then
+# The home-screen cast tiles run on the projector itself and cannot read the
+# token, so loopback requests are trusted; LAN clients still need it.
+if [ "${REMOTE_ADDR:-}" != "127.0.0.1" ] && [ -n "$token_full" ] && [ "$qt" != "$token_full" ] && [ "$qt" != "$pin" ]; then
   echo "Status: 403 Forbidden"; echo "Content-Type: text/plain"; echo; echo "forbidden"; exit 0
 fi
 

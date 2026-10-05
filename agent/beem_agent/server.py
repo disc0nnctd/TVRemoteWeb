@@ -70,6 +70,8 @@ RUNTIME_ASSETS = {
     "files/pqcli.dex": 0o644,
     "files/app/tvremoteweb-qr.apk": 0o644,
     "files/app/versionCode": 0o644,
+    "files/app/tvremoteweb-cast.apk": 0o644,
+    "files/app/cast-versionCode": 0o644,
     "files/cgi-bin/apps.cgi": 0o755,
     "files/cgi-bin/bluetooth.cgi": 0o755,
     "files/cgi-bin/cast.cgi": 0o755,
@@ -741,6 +743,15 @@ def deploy_tvremoteweb_runtime(confirmation: str) -> str:
     if installed_launcher_version < bundled_launcher_version:
         _run(
             [ADB, "-s", serial, "install", "-r", str(MODULE_SOURCE / "files/app/tvremoteweb-qr.apk")],
+            timeout=60,
+        )
+
+    bundled_cast_version = int((MODULE_SOURCE / "files/app/cast-versionCode").read_text().strip())
+    cast_dump = _adb_shell(serial, "dumpsys package com.tvremoteweb.cast 2>/dev/null", root=True)
+    cast_match = re.search(r"versionCode=(\d+)", cast_dump)
+    if (int(cast_match.group(1)) if cast_match else 0) < bundled_cast_version:
+        _run(
+            [ADB, "-s", serial, "install", "-r", str(MODULE_SOURCE / "files/app/tvremoteweb-cast.apk")],
             timeout=60,
         )
 

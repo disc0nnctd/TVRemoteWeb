@@ -4,4 +4,5 @@
 pkill -f 'tvremoteweb/www' 2>/dev/null
 pkill -f mousedaemon 2>/dev/null
 pm uninstall com.tvremoteweb.qr 2>/dev/null
+pm uninstall com.tvremoteweb.cast 2>/dev/null
 exit 0

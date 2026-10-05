@@ -44,3 +44,16 @@ test('Apps tab exposes available receiver controls and a RAM-releasing stop acti
   assert.match(html, /data-cast="stop"/);
   assert.match(html, /if \(name === 'apps'\)[\s\S]*pullCastStatus\(\);/);
 });
+
+test('Cast home tile is its own package and drives cast.cgi over loopback', () => {
+  const manifest = read('src/cast/AndroidManifest.xml');
+  const activity = read('src/cast/java/com/tvremoteweb/cast/CastActivity.java');
+  const cast = read('module/files/cgi-bin/cast.cgi');
+  const customize = read('module/customize.sh');
+  assert.match(manifest, /package="com\.tvremoteweb\.cast"/);
+  assert.match(manifest, /LEANBACK_LAUNCHER/);
+  assert.match(activity, /http:\/\/127\.0\.0\.1:8787\/cgi-bin\/cast\.cgi\?action=/);
+  for (const action of ['miracast', 'airplay', 'dlna', 'stop']) assert.match(activity, new RegExp(`"${action}"`));
+  assert.match(cast, /REMOTE_ADDR:-\}" != "127\.0\.0\.1"/);
+  assert.match(customize, /tvremoteweb-cast\.apk/);
+});
