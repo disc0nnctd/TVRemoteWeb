@@ -904,9 +904,18 @@ async function castRequest(action) {
     const query = new URLSearchParams({action, token});
     const response = await fetch('/cgi-bin/cast.cgi?' + query, {cache:'no-store'});
     if (!response.ok) throw new Error('HTTP ' + response.status);
-    renderCast(await response.json(), action);
+    const result = await response.json();
+    renderCast(result, action);
+    // Miracast takes the projector off Wi-Fi, so a follow-up poll would fail.
+    if (action === 'miracast' && result.status !== 'err') return;
     if (action !== 'status') setTimeout(pullCastStatus, 900);
   } catch (error) {
+    if (action === 'miracast') {
+      castStatus.textContent = 'Miracast is taking the projector off Wi-Fi, so this remote disconnected. Cast from your device now; press Back on the projector remote to return.';
+      castStatus.className = 'settings-status ok';
+      castButtons.forEach(button => { button.disabled = false; });
+      return;
+    }
     castStatus.textContent = 'Casting control failed: ' + error.message;
     castStatus.className = 'settings-status err';
     castButtons.forEach(button => { button.disabled = false; });

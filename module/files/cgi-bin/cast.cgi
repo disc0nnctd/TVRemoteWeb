@@ -94,9 +94,15 @@ case "$action" in
     if installed "$MIRACAST_PKG"; then
       stop_watchdog
       stop_others "$MIRACAST_PKG"
-      if enable_for_cast "$MIRACAST_PKG" && am start --user 0 -n "$MIRACAST_PKG/.Miracast" >/dev/null 2>&1; then
-        start_miracast_watchdog
-        detail="Miracast ready. Open Cast, Smart View, or Wireless display on your Android or Windows device."
+      if enable_for_cast "$MIRACAST_PKG"; then
+        # The receiver takes Wi-Fi offline, so answer the phone first and
+        # start it a moment later; otherwise the reply never arrives.
+        (
+          sleep 2
+          if am start --user 0 -n "$MIRACAST_PKG/.Miracast" >/dev/null 2>&1; then start_miracast_watchdog
+          else restore_disabled "$MIRACAST_PKG"; fi
+        ) </dev/null >/dev/null 2>&1 &
+        detail="Miracast starting. This remote disconnects while it waits; open Cast, Smart View, or Wireless display on your Android or Windows device. Press Back on the projector remote to return."
       else restore_disabled "$MIRACAST_PKG"; status="err"; detail="The built-in Miracast receiver could not start."; fi
     else status="err"; detail="No built-in Miracast receiver was found."; fi ;;
   airplay)
