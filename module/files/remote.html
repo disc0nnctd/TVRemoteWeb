@@ -439,11 +439,12 @@
     </details>
 
     <div class="card">
-      <div class="sec">Open URL on SmartTube</div>
+      <div class="sec">Open link</div>
       <div class="txtrow">
-        <input type="text" id="url" placeholder="paste YouTube URL / video ID"
+        <input type="text" id="url" placeholder="paste a link or YouTube video ID"
                autocomplete="off" autocapitalize="none" autocorrect="off">
         <button class="acc" id="openurl" style="flex:0 0 auto">▶ Play</button>
+        <button id="openbrowser" style="flex:0 0 auto">🌐 Browser</button>
       </div>
     </div>
 
@@ -865,7 +866,13 @@ document.getElementById('txt').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('send').click(); }
 });
 
-/* ---------------- URL → SmartTube ---------------- */
+/* ---------------- URL → SmartTube or browser ---------------- */
+document.getElementById('openbrowser').addEventListener('click', () => {
+  let u = document.getElementById('url').value.trim();
+  if (!u) { call('app=org.chromium.webview_shell'); return; }
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
+  call('url=' + encodeURIComponent(u) + '&app=org.chromium.webview_shell');
+});
 document.getElementById('openurl').addEventListener('click', () => {
   const u = document.getElementById('url').value.trim();
   if (!u) return;
