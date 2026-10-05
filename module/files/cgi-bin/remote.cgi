@@ -88,6 +88,12 @@ if [ -n "$t" ]; then
   detail="text: $t"
 fi
 
+# "browser" means the best installed browser: TV Bro, else the stock shell.
+if [ "$app" = "browser" ]; then
+  app="org.chromium.webview_shell"
+  pm path com.phlox.tvwebbrowser >/dev/null 2>&1 && app="com.phlox.tvwebbrowser"
+fi
+
 if [ -n "$url" ]; then
   # If url given + app given, target that app; else system chooser
   if [ -n "$app" ]; then

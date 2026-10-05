@@ -869,9 +869,9 @@ document.getElementById('txt').addEventListener('keydown', e => {
 /* ---------------- URL → SmartTube or browser ---------------- */
 document.getElementById('openbrowser').addEventListener('click', () => {
   let u = document.getElementById('url').value.trim();
-  if (!u) { call('app=org.chromium.webview_shell'); return; }
+  if (!u) { call('app=browser'); return; }
   if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
-  call('url=' + encodeURIComponent(u) + '&app=org.chromium.webview_shell');
+  call('url=' + encodeURIComponent(u) + '&app=browser');
 });
 document.getElementById('openurl').addEventListener('click', () => {
   const u = document.getElementById('url').value.trim();
