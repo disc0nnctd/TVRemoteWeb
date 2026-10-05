@@ -93,11 +93,9 @@ command -v log >/dev/null 2>&1 && log -t tvremoteweb "remote_url=${REMOTE_URL}"
 # ------------------------------------------------------- mousedaemon ----
 MOUSED="$MODDIR/files/bin/mousedaemon"
 if [ -x "$MOUSED" ]; then
-  ps -A -o PID,ARGS 2>/dev/null \
-    | "$BB" grep -F "$MOUSED" \
-    | "$BB" grep -v "grep -F" \
-    | "$BB" awk '{print $1}' \
-    | while read -r pid; do [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1; done
+  # Android lists the daemon by bare name, not its path, so match the name;
+  # a survivor would keep port 8788 and the new copy would fail to bind.
+  pkill -x mousedaemon >/dev/null 2>&1 && sleep 1
 
   MP="$STATE/mousedaemon.log"
   TVR_WS_PORT="$WSPORT" TVR_TOKEN="$PIN" nohup "$MOUSED" >> "$MP" 2>&1 &

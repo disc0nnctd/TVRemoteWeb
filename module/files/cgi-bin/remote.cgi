@@ -192,7 +192,7 @@ if [ -n "$admin" ]; then
       detail="httpd restart triggered" ;;
     restart_mouse)
       MD=/data/adb/modules/tvremoteweb/files/bin/mousedaemon
-      pkill -f "$MD" 2>/dev/null
+      pkill -x mousedaemon 2>/dev/null && sleep 1
       [ -x "$MD" ] && TVR_WS_PORT=8788 TVR_TOKEN="$pin" nohup "$MD" > /data/adb/tvremoteweb/mousedaemon.log 2>&1 &
       detail="mousedaemon restarted" ;;
     wifi_reconnect)
