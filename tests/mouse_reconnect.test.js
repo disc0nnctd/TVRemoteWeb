@@ -8,11 +8,13 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('new remote connections replace a stale mouse WebSocket', () => {
+test('several remotes share the mouse; a full house evicts the oldest', () => {
   const source = read('src/mousedaemon/mousedaemon.c');
 
-  assert.match(source, /poll\(fds, 2, -1\)/);
-  assert.match(source, /if \(cfd >= 0\) close\(cfd\);\s*cfd = nfd;/);
+  assert.match(source, /MAX_CLIENTS = \d+/);
+  assert.match(source, /poll\(fds, 1 \+ MAX_CLIENTS, -1\)/);
+  assert.match(source, /if \(cage\[i\] < cage\[slot\]\) slot = i;\s*close\(cfd\[slot\]\);/);
+  assert.match(source, /handle_cmd\(buf, &cauth\[i\]\)/);
   assert.match(source, /TCP_NODELAY/);
 });
 
