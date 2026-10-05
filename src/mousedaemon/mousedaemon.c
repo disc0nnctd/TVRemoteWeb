@@ -149,6 +149,13 @@ static int probe_evdev(const char* path){
 }
 
 /* Scan /dev/input for a relative pointer. Fills `chosen` with the path. */
+static int has_wheel(int fd){
+    unsigned char relbits[(REL_MAX+7)/8];
+    memset(relbits, 0, sizeof relbits);
+    if (ioctl(fd, EVIOCGBIT(EV_REL, sizeof relbits), relbits) < 0) return 0;
+    return bit_set(relbits, REL_WHEEL);
+}
+
 static int find_evdev(char* chosen, size_t chosen_len){
     DIR* d = opendir("/dev/input");
     if (!d) return -1;
@@ -355,6 +362,17 @@ int main(void){
         fprintf(stderr, "mousedaemon: using %s (forced)\n", chosen);
     } else {
         ev_fd = find_evdev(chosen, sizeof chosen);
+        /* Vendor IR "mice" (sunxi-ir-uinput on the Beem) move but have no
+         * wheel, so scroll events vanish. Prefer our own virtual mouse then. */
+        if (ev_fd >= 0 && !has_wheel(ev_fd)) {
+            int own = create_uinput();
+            if (own >= 0) {
+                fprintf(stderr, "mousedaemon: %s has no wheel; using virtual mouse\n", chosen);
+                close(ev_fd);
+                ev_fd = own;
+                snprintf(chosen, sizeof chosen, "uinput:tvremoteweb-mouse");
+            }
+        }
         if (ev_fd < 0) {
             fprintf(stderr, "mousedaemon: no relative pointer found, falling back to uinput\n");
             ev_fd = create_uinput();
