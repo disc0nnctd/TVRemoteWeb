@@ -172,6 +172,9 @@
   .proc-controls[hidden] { display:none; }
 
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .lights-scenes { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .lights-scenes button { padding:13px 8px; font-size:12.5px; }
+  .light-btn.on { border-color:#d9a441; color:#ffd88a; }
   .grid2 button { padding:13px 8px; font-size:12.5px; }
   pre.log { display:none; margin-top:10px; max-height:280px; overflow:auto;
             background:var(--sunk); padding:9px; border-radius:8px; font-size:10px;
@@ -366,6 +369,18 @@
         <button data-k="ENTER" class="ghost">↵ Enter</button>
         <button data-k="TAB" class="ghost">⇥ Tab</button>
       </div>
+    </div>
+
+    <div class="card" id="lights-card">
+      <div class="sec">Room lights</div>
+      <div class="lights-scenes" id="lights-scenes">
+        <button data-scene="movie" class="acc">🎬 Movie Mode</button>
+        <button data-scene="half">◐ Half</button>
+        <button data-scene="normal">☀ Normal</button>
+        <button data-scene="off" class="ghost">⏻ Off</button>
+      </div>
+      <div class="grid2" id="lights-list" style="margin-top:8px"></div>
+      <div class="settings-status" id="lights-status" role="status" aria-live="polite">Checking lights…</div>
     </div>
   </section>
 
@@ -881,6 +896,41 @@ document.getElementById('openurl').addEventListener('click', () => {
 document.getElementById('url').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('openurl').click(); }
 });
+
+/* ---------------- Room lights (Home Assistant via the PC relay) ---------------- */
+const lightsStatus = document.getElementById('lights-status');
+const lightsList = document.getElementById('lights-list');
+const sceneNames = {movie:'Movie Mode', half:'Half', normal:'Normal', off:'Off'};
+function renderLights(data, note) {
+  if (!data || data.status !== 'ok') {
+    lightsStatus.textContent = (data && data.detail) || 'Lights are unavailable.';
+    lightsStatus.className = 'settings-status err';
+    return;
+  }
+  lightsList.replaceChildren(...data.lights.map(light => {
+    const b = document.createElement('button');
+    b.className = 'light-btn' + (light.on ? ' on' : '');
+    b.disabled = !light.available;
+    b.textContent = (light.on ? '💡 ' : '○ ') + light.name +
+      (!light.available ? ' · offline' : light.on && light.brightness != null ? ' · ' + light.brightness + '%' : ' · off');
+    b.addEventListener('click', () => lightsRequest('action=set&id=' + encodeURIComponent(light.id) + '&on=toggle'));
+    return b;
+  }));
+  lightsStatus.textContent = note || 'Lights ready.';
+  lightsStatus.className = 'settings-status ok';
+}
+async function lightsRequest(query, note) {
+  lightsStatus.textContent = 'Working…'; lightsStatus.className = 'settings-status';
+  try {
+    const r = await fetch('/cgi-bin/lights.cgi?' + query + '&token=' + encodeURIComponent(token), {cache:'no-store'});
+    renderLights(await r.json(), note);
+  } catch (e) {
+    renderLights({status:'err', detail:'Lights request failed: ' + e.message});
+  }
+}
+document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () =>
+  lightsRequest('action=scene&name=' + b.dataset.scene, sceneNames[b.dataset.scene] + ' set.')));
+lightsRequest('action=status');
 
 /* ---------------- QR splash ---------------- */
 document.getElementById('show-qr').addEventListener('click',     () => call('splash=show'));

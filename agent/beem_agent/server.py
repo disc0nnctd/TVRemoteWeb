@@ -77,6 +77,7 @@ RUNTIME_ASSETS = {
     "files/cgi-bin/cast.cgi": 0o755,
     "files/cgi-bin/hdmi.cgi": 0o755,
     "files/cgi-bin/keystone.cgi": 0o755,
+    "files/cgi-bin/lights.cgi": 0o755,
     "files/cgi-bin/qr.cgi": 0o755,
     "files/cgi-bin/remote.cgi": 0o755,
     "files/cgi-bin/settings.cgi": 0o755,

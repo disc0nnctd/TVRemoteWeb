@@ -1,0 +1,11 @@
+[Unit]
+Description=TVRemoteWeb room-light relay (Home Assistant <-> projector via adb reverse)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/projects/TVRemoteWeb/tools/ha-relay/ha_relay.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
