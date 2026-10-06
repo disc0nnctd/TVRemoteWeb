@@ -159,16 +159,50 @@ def adb(*args, timeout=10):
         return ""
 
 
+def find_projector(subnet):
+    """Scan subnet (e.g. "192.168.1") for the TVRemoteWeb server; return its IP."""
+    import concurrent.futures, socket
+
+    def probe(ip):
+        try:
+            with socket.create_connection((ip, 8787), timeout=0.6):
+                pass
+            with urllib.request.urlopen(f"http://{ip}:8787/remote.html", timeout=3) as response:
+                return ip if b"/cgi-bin/remote.cgi" in response.read() else None
+        except Exception:
+            return None
+
+    with concurrent.futures.ThreadPoolExecutor(64) as pool:
+        for ip in pool.map(probe, (f"{subnet}.{i}" for i in range(1, 255))):
+            if ip:
+                return ip
+    return None
+
+
 def keep_tunnel():
-    """Keep tcp:PORT on the projector's loopback forwarded to this relay."""
+    """Keep tcp:PORT on the projector's loopback forwarded to this relay.
+
+    The projector's Airtel DHCP address can change; when the saved one stops
+    answering, rescan its subnet and remember the new address in the config."""
     serial = cfg["projector"]
     rule = f"tcp:{PORT}"
+    failures = 0
     while True:
         if rule not in adb("-s", serial, "reverse", "--list"):
             adb("connect", serial)
             adb("-s", serial, "reverse", rule, rule)
             ok = rule in adb("-s", serial, "reverse", "--list")
             print(f"tunnel {'up' if ok else 'down'} via {serial}", flush=True)
+            failures = 0 if ok else failures + 1
+            if failures >= 3:
+                host, _, port = serial.partition(":")
+                found = find_projector(host.rsplit(".", 1)[0])
+                if found and found != host:
+                    serial = f"{found}:{port or 5555}"
+                    cfg["projector"] = serial
+                    CONFIG.write_text(json.dumps(cfg, indent=2))
+                    print(f"projector moved; now {serial}", flush=True)
+                    continue
         time.sleep(20)
 
 
