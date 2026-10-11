@@ -51,11 +51,14 @@ pairing dance. This is a web page served by the box itself.
 ## Features
 
 - **D-pad, media keys, volume** — the normal remote, but responsive
+- **Seek ±10 s / ±30 s** — jumps through the playing app's media session, so it
+  works in players that ignore the rewind/fast-forward keys
 - **Real mouse touchpad** — a native daemon writes `struct input_event`
   straight to an evdev node over a WebSocket. Roughly 10 ms per motion event
   versus ~80 ms for the shell-out path it replaced, which is the difference
   between a usable cursor and an unusable one. A newly visible remote takes
-  over immediately, while hidden tabs release the native connection.
+  over immediately, while hidden tabs release the native connection. Several
+  phones can drive the pointer at once, and two-finger scrolling works.
 - **Text input** — type on the phone keyboard instead of hunting an on-screen grid
 - **Persistent keyboard shortcut** — open text input from any remote tab
 - **Latched mouse Hold/Release** — drag Android objects with the real pointer
@@ -63,12 +66,18 @@ pairing dance. This is a web page served by the box itself.
   from separate HDMI 1/2/3 LTV Launcher tiles; an HDMI Inputs tile opens the
   full firmware source picker
 - **App launcher** — enumerated live from the device; long-press to pin favourites
-- **Send a URL to the TV** — paste a link, it opens in the app you choose
+- **Send a URL to the TV** — paste a link, it opens in the app you choose, or
+  in the browser (TV Bro when installed)
+- **App installer** — install an APK from a link, by upload from the phone, or
+  from F-Droid/Aptoide search and a curated list; uninstall from the same card
+- **Room lights** — optional Home Assistant scenes and per-light toggles through
+  a small relay on a LAN machine (`tools/ha-relay`); the HA token never reaches
+  the projector
 - **On-demand casting** — launch an installed Miracast, AirPlay, or DLNA
   firmware receiver from the Apps tab, then stop it to release its RAM; the
   module adds no resident casting service. Reopening the projector's Phone
   Remote tile stops casting and restores Wi-Fi when Miracast took LAN control
-  offline.
+  offline. A Cast tile on the home screen offers the same receivers.
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
   storage, uptime
 - **Password-gated process manager** — collapsed at the bottom of Tools; enter
@@ -152,7 +161,11 @@ badly.
 This is designed for a home LAN and the threat model is "someone else on my
 Wi-Fi", not "the public internet".
 
-- Every endpoint requires the token; requests without it get `403`
+- **Household mode:** the remote fetches its PIN from `pin.cgi`, so opening
+  `http://<projector>:8787/` works without scanning the QR. The QR splash
+  already showed the PIN to anyone on the LAN, so this adds no new exposure,
+  but it does mean **anyone on your Wi-Fi can use the remote**.
+- Every other endpoint requires the token; requests without it get `403`
 - Process listing and kill actions require the remote PIN again through a
   separate request header; the browser keeps it only in memory while unlocked
 - The token file is `0600` and root-owned
@@ -174,6 +187,10 @@ src/mousedaemon/build.sh          # needs arm/aarch64 gcc cross-compilers
 
 # QR tile APK — hand-written smali, assembled by apktool
 src/app/build.sh                  # needs apktool, zipalign, apksigner, JDK
+
+# Cast tile APK and the media-session seek helper — javac + d8
+src/cast/build.sh
+src/mediactl/build.sh
 
 # Beem Allwinner picture-control bridge
 tools/build-pqcli.sh              # needs smali

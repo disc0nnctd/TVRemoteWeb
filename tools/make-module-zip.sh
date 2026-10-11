@@ -5,5 +5,5 @@ VER="$(sed -n 's/^version=//p' "$ROOT/module/module.prop")"
 OUT="$ROOT/tvremoteweb-v${VER}.zip"
 rm -f "$OUT"
 cd "$ROOT/module"
-zip -r9 "$OUT" . -x '.*' >/dev/null
+zip -r9 "$OUT" . -x '.*' '*.idsig' >/dev/null
 echo "built $OUT ($(stat -c%s "$OUT") bytes)"
