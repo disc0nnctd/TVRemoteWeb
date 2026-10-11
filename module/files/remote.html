@@ -846,20 +846,22 @@ function wsConnect() {
 wsConnect();
 function wsSend(m) {
   if (wsReady && ws) { ws.send(m); return true; }
-  if (wsPending.length < 100) wsPending.push(m);
+  // Moves already go out over HTTP when the socket is down; replaying them on
+  // reconnect would move the pointer twice.
+  if (!m.startsWith('M ') && wsPending.length < 100) wsPending.push(m);
   return false;
 }
 
 /* ---------------- CGI call ---------------- */
 const sEl = document.getElementById('s');
 let sFlashTimer = null;
-async function call(qs) {
+async function call(qs, quiet) {
   sEl.textContent = '…'; sEl.classList.remove('err');
   try {
     const r = await fetch('/cgi-bin/remote.cgi?' + qs + (token ? '&token=' + encodeURIComponent(token) : ''), {cache:'no-store'});
     const j = await r.json();
     sEl.textContent = j.detail || j.status;
-    navigator.vibrate && navigator.vibrate(8);
+    if (!quiet) navigator.vibrate && navigator.vibrate(8);
     sEl.classList.add('flash');
     if (sFlashTimer) clearTimeout(sFlashTimer);
     sFlashTimer = setTimeout(() => sEl.classList.remove('flash'), 220);
@@ -1077,10 +1079,12 @@ let longPressTimer = null;
 let pendingDx = 0, pendingDy = 0, sendTimer = null;
 
 function flushMove() {
-  if (pendingDx === 0 && pendingDy === 0) { sendTimer = null; return; }
   const dx = Math.round(pendingDx), dy = Math.round(pendingDy);
+  // A sub-pixel remainder rounds to 0,0: stop here (keep it for the next
+  // touch) instead of sending "M 0 0" every 12 ms forever.
+  if (dx === 0 && dy === 0) { sendTimer = null; return; }
   pendingDx -= dx; pendingDy -= dy;
-  if (!wsSend(`M ${dx} ${dy}`)) call(`mv=${dx},${dy}`);
+  if (!wsSend(`M ${dx} ${dy}`)) call(`mv=${dx},${dy}`, true);
   sendTimer = setTimeout(flushMove, 12);
 }
 function queueMove(dx, dy) {
