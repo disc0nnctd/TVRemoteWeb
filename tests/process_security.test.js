@@ -8,17 +8,16 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-test('Process Monitor is collapsed, last in Tools, and never auto-loads', () => {
+test('Process Monitor is collapsed, last in Stats, and never auto-loads', () => {
   const html = read('module/files/remote.html');
-  const toolsStart = html.indexOf('<section class="tabpane" data-tab="tools">');
-  const toolsEnd = html.indexOf('</section>', toolsStart);
-  const tools = html.slice(toolsStart, toolsEnd);
+  const statsStart = html.indexOf('<section class="tabpane" data-tab="stats">');
+  const statsEnd = html.indexOf('</section>', statsStart);
+  const stats = html.slice(statsStart, statsEnd);
 
-  assert.match(tools, /<details class="card proc-vault" id="proc-vault">/);
-  assert.doesNotMatch(tools, /id="proc-vault"[^>]*\bopen\b/);
-  assert.ok(tools.indexOf('id="proc-vault"') > tools.indexOf('<div class="sec">System<\/div>'));
-  assert.ok(tools.indexOf('id="proc-vault"') > tools.lastIndexOf('<div class="card">'));
-  assert.doesNotMatch(html, /name === 'tools'[^\n]*pullProcs/);
+  assert.match(stats, /<details class="card proc-vault" id="proc-vault">/);
+  assert.doesNotMatch(stats, /id="proc-vault"[^>]*\bopen\b/);
+  assert.ok(stats.indexOf('id="proc-vault"') > stats.lastIndexOf('<div class="card">'));
+  assert.doesNotMatch(html, /name === '(tools|stats)'[^\n]*pullProcs/);
 });
 
 test('Process password stays in memory and is sent as a request header', () => {

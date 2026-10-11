@@ -88,8 +88,9 @@
     font-family:inherit; min-width:0;
   }
   input[type=text]:focus, input[type=password]:focus { outline:2px solid var(--acc); outline-offset:1px; border-color:var(--acc); }
-  #cast-card > summary::-webkit-details-marker { display:none; }
-  #cast-card[open] > summary { margin-bottom:9px; }
+  #cast-card > summary::-webkit-details-marker, #install-card > summary::-webkit-details-marker { display:none; }
+  #cast-card[open] > summary, #install-card[open] > summary { margin-bottom:9px; }
+  .apps button.installed { box-shadow:inset 0 0 0 2px var(--acc); }
   .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
   .apps button { padding:16px 10px; font-size:14px; }
   .apps button small { display:block; margin-top:4px; color:var(--muted); font-size:9.5px; font-weight:400; line-height:1.25; }
@@ -435,22 +436,13 @@
       <div class="apps" id="apps-tv"><div class="empty">loading…</div></div>
     </div>
 
-    <div class="card" id="apps-other-card" style="display:none">
-      <div class="sec">Other Apps</div>
-      <div class="apps" id="apps-other"></div>
-    </div>
-
-    <details class="card" id="cast-card">
-      <summary class="sec" style="cursor:pointer;list-style:none">Cast or mirror <span class="note">— tap to expand</span></summary>
-      <p class="advanced-note">Uses receivers already built into the projector. TVRemoteWeb temporarily enables only your selection; Stop casting disables it again and releases its RAM.</p>
-      <div class="apps">
-        <button data-cast="miracast">▣ Android / Windows<small>Miracast · LAN remote pauses</small></button>
-        <button data-cast="airplay">◉ iPhone / Mac<small>AirPlay · full screen</small></button>
-        <button data-cast="dlna">▶ Media app<small>DLNA · lowest streaming load</small></button>
-        <button data-cast="stop" class="danger">■ Stop casting<small>Release receiver RAM</small></button>
+    <details class="card proc-vault" id="apps-other-card" hidden>
+      <summary>
+        <span class="proc-vault-title"><strong>Other Apps</strong><small id="apps-other-count">phone-shaped apps, not TV apps</small></span>
+      </summary>
+      <div class="proc-vault-body">
+        <div class="apps" id="apps-other" style="margin-top:12px"></div>
       </div>
-      <p class="advanced-note" style="margin-top:9px">Miracast switches Wi‑Fi into direct-display mode, so this page pauses until casting ends. AirPlay and DLNA keep the LAN remote available.</p>
-      <div class="settings-status" id="cast-status">Checking built-in receivers…</div>
     </details>
 
     <div class="card">
@@ -463,13 +455,68 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="sec">Show QR on TV</div>
-      <div class="row">
-        <button id="show-qr" class="acc">📱 Show QR</button>
-        <button id="hide-splash" class="ghost">✕ Dismiss</button>
+    <details class="card proc-vault" id="cast-card">
+      <summary>
+        <span class="proc-vault-title"><strong>Cast or mirror</strong><small>Miracast, AirPlay, DLNA · on-demand</small></span>
+      </summary>
+      <div class="proc-vault-body">
+        <p class="advanced-note">Uses receivers already built into the projector. TVRemoteWeb temporarily enables only your selection; Stop casting disables it again and releases its RAM.</p>
+        <div class="apps">
+          <button data-cast="miracast">▣ Android / Windows<small>Miracast · LAN remote pauses</small></button>
+          <button data-cast="airplay">◉ iPhone / Mac<small>AirPlay · full screen</small></button>
+          <button data-cast="dlna">▶ Media app<small>DLNA · lowest streaming load</small></button>
+          <button data-cast="stop" class="danger">■ Stop casting<small>Release receiver RAM</small></button>
+        </div>
+        <p class="advanced-note" style="margin-top:9px">Miracast switches Wi‑Fi into direct-display mode, so this page pauses until casting ends. AirPlay and DLNA keep the LAN remote available.</p>
+        <div class="settings-status" id="cast-status">Checking built-in receivers…</div>
       </div>
-    </div>
+    </details>
+
+    <details class="card proc-vault" id="install-card">
+      <summary>
+        <span class="proc-vault-title"><strong>Install &amp; manage apps</strong><small>F-Droid, Aptoide, curated links, uninstall</small></span>
+      </summary>
+      <div class="proc-vault-body">
+      <p class="advanced-note">Downloads happen on the projector, not this phone. You confirm each install here first; then the projector installs it directly. Android still checks the APK, and an update must come from the same developer as the installed app.</p>
+
+      <div class="pq-group-label">Direct install</div>
+      <div class="txtrow">
+        <input type="text" id="direct-url" placeholder="paste an https:// .apk link…" autocomplete="off" autocapitalize="none" autocorrect="off">
+        <button class="acc" id="direct-url-go" style="flex:0 0 auto">Install</button>
+      </div>
+      <label class="file-btn" for="direct-upload" style="margin-top:8px">⬆ Upload an APK from this phone<small id="direct-upload-name">Sends the file to the projector, then installs</small></label>
+      <input class="visually-hidden" id="direct-upload" type="file" accept=".apk,application/vnd.android.package-archive">
+      <div class="settings-status" id="direct-status">Paste a link or upload a file.</div>
+
+      <div class="pq-group-label" style="margin-top:14px">F-Droid (open source)</div>
+      <div class="txtrow">
+        <input type="text" id="fdroid-q" placeholder="search F-Droid…" autocomplete="off" autocapitalize="none" autocorrect="off">
+        <button class="acc" id="fdroid-go" style="flex:0 0 auto">Search</button>
+      </div>
+      <div class="apps" id="fdroid-results" style="margin-top:8px"></div>
+      <div class="settings-status" id="fdroid-status">Search for an app name above.</div>
+
+      <div class="pq-group-label" style="margin-top:14px">Aptoide <span class="note">— broader catalog, includes proprietary apps</span></div>
+      <p class="advanced-note">Aptoide's own public search service, not TVRemoteWeb's catalog. Each result shows Aptoide's malware-scan verdict for that listing.</p>
+      <div class="txtrow">
+        <input type="text" id="aptoide-q" placeholder="search Aptoide…" autocomplete="off" autocapitalize="none" autocorrect="off">
+        <button class="acc" id="aptoide-go" style="flex:0 0 auto">Search</button>
+      </div>
+      <div class="apps" id="aptoide-results" style="margin-top:8px"></div>
+      <div class="settings-status" id="aptoide-status">Search for an app name above.</div>
+
+      <div class="pq-group-label" style="margin-top:14px">Curated links</div>
+      <p class="advanced-note">Direct links to official downloads, not a scraped catalog — add your own in <code>curated-apps.json</code>. Proprietary streaming apps (Netflix, Prime Video) usually need Google Play certification and Widevine L1 DRM to play at full quality; this device likely has neither, so sideloading them may install but not play well.</p>
+      <div class="apps" id="curated-results"></div>
+
+      <details class="pq-custom-picker" id="manage-installed-picker" style="margin-top:14px">
+        <summary>Manage installed apps</summary>
+        <div class="pq-custom-picker-body">
+          <div class="apps" id="installed-results" style="margin-top:10px"><div class="empty">loading…</div></div>
+        </div>
+      </details>
+      </div>
+    </details>
   </section>
 
   <!-- ================= STATS ================= -->
@@ -500,6 +547,31 @@
       </div>
       <div class="meta" id="stats-ts">not loaded</div>
     </div>
+
+    <details class="card proc-vault" id="proc-vault">
+      <summary>
+        <span class="proc-vault-title"><strong>Process Monitor</strong><small>Protected dangerous controls · remote PIN required</small></span>
+      </summary>
+      <div class="proc-vault-body">
+        <form class="proc-lock" id="proc-lock">
+          <label for="proc-password">Enter the projector remote PIN to view or kill processes</label>
+          <div class="proc-lock-row">
+            <input id="proc-password" type="password" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="proc-error">
+            <button type="submit" class="ghost">Unlock</button>
+          </div>
+          <div class="proc-error" id="proc-error" role="status" aria-live="polite"></div>
+        </form>
+        <div class="proc-controls" id="proc-controls" hidden>
+          <p class="advanced-note">Killing system processes can freeze or reboot the projector. Only stop a process you recognize.</p>
+          <div class="ctl">
+            <button class="ghost" id="proc-lock-button">Lock</button>
+            <button class="ghost" id="proc-refresh">↻ Refresh</button>
+          </div>
+          <div class="proc-list" id="proc-list"><div class="empty">Unlocked</div></div>
+          <div class="meta" id="proc-ts"></div>
+        </div>
+      </div>
+    </details>
   </section>
 
   <!-- ================= KEYSTONE ALIGN ================= -->
@@ -592,7 +664,65 @@
   <!-- ================= TOOLS ================= -->
   <section class="tabpane" data-tab="tools">
     <div class="card">
-      <div class="sec">Picture controls <span class="note">— Beem hardware PQ</span></div>
+      <div class="sec">System</div>
+      <div class="grid2">
+        <button data-sys="settings">⚙ Projector settings</button>
+        <button data-sys="wifi_settings">📶 Wi-Fi</button>
+        <button data-sys="notif">🔔 Notifications</button>
+        <button data-sys="screen_off" class="ghost">◐ Screen Off</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="show-qr" class="acc">📱 Show QR</button>
+        <button id="hide-splash" class="ghost">✕ Dismiss QR</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button data-sys="reboot" class="ghost danger">⟳ Reboot Projector</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Bluetooth</div>
+      <p class="advanced-note">On/off uses Android's system Bluetooth service. Pair and Manage open the projector's existing settings screen; continue with this remote's D-pad.</p>
+      <div class="grid2">
+        <button data-bluetooth="enable">Bluetooth on</button>
+        <button data-bluetooth="disable" class="ghost">Bluetooth off</button>
+        <button data-bluetooth="pair">＋ Pair device</button>
+        <button data-bluetooth="settings">⚙ Manage devices</button>
+      </div>
+      <div class="settings-status" id="bluetooth-status">Open Tools to check Bluetooth.</div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Maintenance</div>
+      <div class="grid2">
+        <button data-admin="trim_cache">🧹 Trim Cache</button>
+        <button data-admin="drop_caches">💧 Drop Cache</button>
+        <button data-admin="restart_httpd"  class="warn">↻ httpd</button>
+        <button data-admin="restart_mouse"  class="warn">↻ mousedaemon</button>
+        <button data-admin="wifi_reconnect" class="warn">📶 Cycle Wi-Fi</button>
+        <button id="show-logcat">📋 Logcat</button>
+      </div>
+      <pre class="log" id="logcat-out"></pre>
+    </div>
+
+    <div class="card">
+      <div class="sec">Power &amp; interface</div>
+      <div class="setting-list">
+        <div class="setting"><div class="setting-head"><label for="set-timeout">Screen timeout</label></div><select id="set-timeout" data-setting="screen_timeout"><option value="300000">5 minutes</option><option value="900000">15 minutes</option><option value="1800000">30 minutes</option><option value="3600000">1 hour</option><option value="2147483647">Never (practical)</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-screensaver">Screensaver</label></div><select id="set-screensaver" data-setting="screensaver"><option value="0">Off</option><option value="1">On</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-stay-awake">Stay awake while powered</label></div><select id="set-stay-awake" data-setting="stay_awake"><option value="0">Off</option><option value="7">USB / AC / wireless power</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-rotation">Rotation</label></div><select id="set-rotation" data-setting="rotation"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></div>
+        <div class="setting"><div class="setting-head"><label for="set-animation">Animation speed</label></div><select id="set-animation" data-setting="animation"><option value="1">Normal</option><option value="0.5">Fast</option><option value="0">Off</option></select></div>
+      </div>
+      <div class="settings-actions"><button id="settings-refresh" class="ghost">Refresh</button><button id="settings-apply" class="acc">Apply selected</button></div>
+      <div class="settings-status" id="device-settings-status">Open Tools to load projector settings.</div>
+    </div>
+
+    <details class="card proc-vault" id="picture-card">
+      <summary>
+        <span class="proc-vault-title"><strong>Picture controls</strong><small>Beem hardware PQ · brightness, contrast, gamma…</small></span>
+      </summary>
+      <div class="proc-vault-body">
       <p class="advanced-note">Locked defaults cannot be altered. Use Save as custom to copy one into an editable projector-wide profile. Selecting or saving a profile does not apply it.</p>
       <div class="pq-group-label">Locked defaults</div>
       <div class="pq-profiles" role="group" aria-label="Display picture profiles">
@@ -636,80 +766,6 @@
         <button id="pq-restore" class="ghost" disabled>Restore previous</button>
       </div>
       <div class="settings-status" id="settings-status">Open Tools to load projector settings.</div>
-    </div>
-
-    <div class="card">
-      <div class="sec">Power &amp; interface</div>
-      <div class="setting-list">
-        <div class="setting"><div class="setting-head"><label for="set-timeout">Screen timeout</label></div><select id="set-timeout" data-setting="screen_timeout"><option value="300000">5 minutes</option><option value="900000">15 minutes</option><option value="1800000">30 minutes</option><option value="3600000">1 hour</option><option value="2147483647">Never (practical)</option></select></div>
-        <div class="setting"><div class="setting-head"><label for="set-screensaver">Screensaver</label></div><select id="set-screensaver" data-setting="screensaver"><option value="0">Off</option><option value="1">On</option></select></div>
-        <div class="setting"><div class="setting-head"><label for="set-stay-awake">Stay awake while powered</label></div><select id="set-stay-awake" data-setting="stay_awake"><option value="0">Off</option><option value="7">USB / AC / wireless power</option></select></div>
-        <div class="setting"><div class="setting-head"><label for="set-rotation">Rotation</label></div><select id="set-rotation" data-setting="rotation"><option value="0">0°</option><option value="1">90°</option><option value="2">180°</option><option value="3">270°</option></select></div>
-        <div class="setting"><div class="setting-head"><label for="set-animation">Animation speed</label></div><select id="set-animation" data-setting="animation"><option value="1">Normal</option><option value="0.5">Fast</option><option value="0">Off</option></select></div>
-      </div>
-      <div class="settings-actions"><button id="settings-refresh" class="ghost">Refresh</button><button id="settings-apply" class="acc">Apply selected</button></div>
-    </div>
-
-    <div class="card">
-      <div class="sec">Bluetooth</div>
-      <p class="advanced-note">On/off uses Android's system Bluetooth service. Pair and Manage open the projector's existing settings screen; continue with this remote's D-pad.</p>
-      <div class="grid2">
-        <button data-bluetooth="enable">Bluetooth on</button>
-        <button data-bluetooth="disable" class="ghost">Bluetooth off</button>
-        <button data-bluetooth="pair">＋ Pair device</button>
-        <button data-bluetooth="settings">⚙ Manage devices</button>
-      </div>
-      <div class="settings-status" id="bluetooth-status">Open Tools to check Bluetooth.</div>
-    </div>
-
-    <div class="card">
-      <div class="sec">Maintenance</div>
-      <div class="grid2">
-        <button data-admin="trim_cache">🧹 Trim Cache</button>
-        <button data-admin="drop_caches">💧 Drop Cache</button>
-        <button data-admin="restart_httpd"  class="warn">↻ httpd</button>
-        <button data-admin="restart_mouse"  class="warn">↻ mousedaemon</button>
-        <button data-admin="wifi_reconnect" class="warn">📶 Cycle Wi-Fi</button>
-        <button id="show-logcat">📋 Logcat</button>
-      </div>
-      <pre class="log" id="logcat-out"></pre>
-    </div>
-
-    <div class="card">
-      <div class="sec">System</div>
-      <div class="grid2">
-        <button data-sys="settings">⚙ Projector settings</button>
-        <button data-sys="wifi_settings">📶 Wi-Fi</button>
-        <button data-sys="notif">🔔 Notifications</button>
-        <button data-sys="screen_off" class="ghost">◐ Screen Off</button>
-      </div>
-      <div class="row">
-        <button data-sys="reboot" class="ghost danger">⟳ Reboot Projector</button>
-      </div>
-    </div>
-
-    <details class="card proc-vault" id="proc-vault">
-      <summary>
-        <span class="proc-vault-title"><strong>Process Monitor</strong><small>Protected dangerous controls · remote PIN required</small></span>
-      </summary>
-      <div class="proc-vault-body">
-        <form class="proc-lock" id="proc-lock">
-          <label for="proc-password">Enter the projector remote PIN to view or kill processes</label>
-          <div class="proc-lock-row">
-            <input id="proc-password" type="password" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="proc-error">
-            <button type="submit" class="ghost">Unlock</button>
-          </div>
-          <div class="proc-error" id="proc-error" role="status" aria-live="polite"></div>
-        </form>
-        <div class="proc-controls" id="proc-controls" hidden>
-          <p class="advanced-note">Killing system processes can freeze or reboot the projector. Only stop a process you recognize.</p>
-          <div class="ctl">
-            <button class="ghost" id="proc-lock-button">Lock</button>
-            <button class="ghost" id="proc-refresh">↻ Refresh</button>
-          </div>
-          <div class="proc-list" id="proc-list"><div class="empty">Unlocked</div></div>
-          <div class="meta" id="proc-ts"></div>
-        </div>
       </div>
     </details>
   </section>
@@ -1165,7 +1221,8 @@ function renderApps(data) {
 
   otherBox.innerHTML = '';
   const other = order(data.other || []);
-  otherCard.style.display = other.length ? '' : 'none';
+  otherCard.hidden = !other.length;
+  document.getElementById('apps-other-count').textContent = other.length + ' app' + (other.length === 1 ? '' : 's') + ', not shown on TV Apps';
   other.forEach(a => otherBox.appendChild(btn(a)));
 }
 
@@ -1181,6 +1238,240 @@ async function pullApps() {
   }
 }
 document.getElementById('apps-refresh').addEventListener('click', pullApps);
+
+/* ---------------- install apps ---------------- */
+let installCardLoaded = false;
+let curatedApps = [];
+let installedPkgs = new Set();
+const fdroidStatus = document.getElementById('fdroid-status');
+const fdroidResults = document.getElementById('fdroid-results');
+const curatedResults = document.getElementById('curated-results');
+const installedResults = document.getElementById('installed-results');
+
+function setFdroidStatus(message, kind) {
+  fdroidStatus.textContent = message;
+  fdroidStatus.classList.toggle('ok', kind === 'ok');
+  fdroidStatus.classList.toggle('err', kind === 'err');
+}
+
+async function installFromUrl(url, label, button) {
+  if (!confirm('Download and install "' + label + '" on the projector?')) return;
+  const original = button.textContent;
+  button.disabled = true; button.textContent = 'Downloading…';
+  try {
+    const body = new URLSearchParams({action:'download_install', url, token, confirmation:'INSTALL'});
+    const r = await fetch('/cgi-bin/appstore.cgi', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body, cache:'no-store'});
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.detail || 'install failed');
+    setFdroidStatus(j.detail, 'ok');
+  } catch (error) {
+    setFdroidStatus('Install failed: ' + error.message, 'err');
+  } finally {
+    button.disabled = false; button.textContent = original;
+  }
+}
+
+const directStatus = document.getElementById('direct-status');
+function setDirectStatus(message, kind) {
+  directStatus.textContent = message;
+  directStatus.classList.toggle('ok', kind === 'ok');
+  directStatus.classList.toggle('err', kind === 'err');
+}
+
+document.getElementById('direct-url-go').addEventListener('click', async () => {
+  const input = document.getElementById('direct-url');
+  const url = input.value.trim();
+  if (!url) return;
+  if (!/^https:\/\//i.test(url)) { setDirectStatus('Only https:// links are accepted.', 'err'); return; }
+  if (!confirm('Download this link and install it on the projector?\n\n' + url)) return;
+  const button = document.getElementById('direct-url-go');
+  button.disabled = true; button.textContent = 'Downloading…';
+  setDirectStatus('Downloading on the projector…');
+  try {
+    const body = new URLSearchParams({action:'download_install', url, token, confirmation:'INSTALL'});
+    const r = await fetch('/cgi-bin/appstore.cgi', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body, cache:'no-store'});
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.detail || 'install failed');
+    setDirectStatus(j.detail, 'ok');
+    input.value = '';
+  } catch (error) {
+    setDirectStatus('Install failed: ' + error.message, 'err');
+  } finally {
+    button.disabled = false; button.textContent = 'Install';
+  }
+});
+document.getElementById('direct-url').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('direct-url-go').click(); } });
+
+document.getElementById('direct-upload').addEventListener('change', async (event) => {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (!confirm('Send "' + file.name + '" (' + (file.size/1024/1024).toFixed(1) + ' MB) to the projector and install it?\n\nUploads are slow (about 4 minutes for 50 MB); a download link is much faster.')) return;
+  const label = document.getElementById('direct-upload-name');
+  const originalLabel = label.textContent;
+  label.textContent = 'Uploading ' + file.name + '…';
+  setDirectStatus('Uploading to the projector…');
+  try {
+    const query = new URLSearchParams({action:'upload_install', confirmation:'INSTALL', token});
+    const r = await fetch('/cgi-bin/appstore.cgi?' + query, {
+      method:'POST',
+      headers:{'Content-Type':'application/octet-stream'},
+      body: file,
+      cache:'no-store'
+    });
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.detail || 'install failed');
+    setDirectStatus(j.detail, 'ok');
+  } catch (error) {
+    setDirectStatus('Upload failed: ' + error.message, 'err');
+  } finally {
+    label.textContent = originalLabel;
+  }
+});
+
+async function fdroidSearch() {
+  const q = document.getElementById('fdroid-q').value.trim();
+  if (!q) return;
+  fdroidResults.innerHTML = '';
+  setFdroidStatus('Searching F-Droid…');
+  try {
+    const r = await fetch('/cgi-bin/appstore.cgi?action=fdroid_search&q=' + encodeURIComponent(q) + '&token=' + encodeURIComponent(token), {cache:'no-store'});
+    const j = await r.json();
+    if (j.status === 'err') throw new Error(j.detail);
+    const apps = (j.apps || []).slice(0, 12);
+    if (!apps.length) { setFdroidStatus('No F-Droid results for "' + q + '".'); return; }
+    setFdroidStatus(apps.length + ' result' + (apps.length === 1 ? '' : 's') + '. Tap one to install.', 'ok');
+    apps.forEach(app => {
+      const pkg = (app.url || '').split('/packages/')[1];
+      const b = document.createElement('button');
+      b.innerHTML = esc(app.name) + '<small>' + esc(app.summary || '') + '</small>';
+      b.addEventListener('click', async () => {
+        if (!pkg) { setFdroidStatus('Could not determine the package for this result.', 'err'); return; }
+        b.disabled = true; b.textContent = 'Resolving…';
+        try {
+          const rr = await fetch('/cgi-bin/appstore.cgi?action=fdroid_resolve&pkg=' + encodeURIComponent(pkg) + '&token=' + encodeURIComponent(token), {cache:'no-store'});
+          const jj = await rr.json();
+          if (jj.status !== 'ok') throw new Error(jj.detail);
+          b.disabled = false; b.innerHTML = esc(app.name) + '<small>' + esc(app.summary || '') + '</small>';
+          await installFromUrl(jj.url, app.name, b);
+        } catch (error) {
+          b.disabled = false; b.innerHTML = esc(app.name) + '<small>' + esc(app.summary || '') + '</small>';
+          setFdroidStatus('Could not resolve: ' + error.message, 'err');
+        }
+      });
+      fdroidResults.appendChild(b);
+    });
+  } catch (error) {
+    setFdroidStatus('F-Droid search failed: ' + error.message, 'err');
+  }
+}
+document.getElementById('fdroid-go').addEventListener('click', fdroidSearch);
+document.getElementById('fdroid-q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fdroidSearch(); } });
+
+const aptoideStatus = document.getElementById('aptoide-status');
+const aptoideResults = document.getElementById('aptoide-results');
+function setAptoideStatus(message, kind) {
+  aptoideStatus.textContent = message;
+  aptoideStatus.classList.toggle('ok', kind === 'ok');
+  aptoideStatus.classList.toggle('err', kind === 'err');
+}
+
+async function aptoideSearch() {
+  const q = document.getElementById('aptoide-q').value.trim();
+  if (!q) return;
+  aptoideResults.innerHTML = '';
+  setAptoideStatus('Searching Aptoide…');
+  try {
+    const r = await fetch('/cgi-bin/appstore.cgi?action=aptoide_search&q=' + encodeURIComponent(q) + '&token=' + encodeURIComponent(token), {cache:'no-store'});
+    const j = await r.json();
+    if (j.status === 'err') throw new Error(j.detail);
+    const apps = (j.datalist && j.datalist.list || []).slice(0, 12);
+    if (!apps.length) { setAptoideStatus('No Aptoide results for "' + q + '".'); return; }
+    setAptoideStatus(apps.length + ' result' + (apps.length === 1 ? '' : 's') + '. Tap one to install.', 'ok');
+    apps.forEach(app => {
+      const url = app.file && app.file.path;
+      const rank = app.file && app.file.malware && app.file.malware.rank;
+      const rankNote = rank ? (' · ' + rank.toLowerCase() + ' scan') : '';
+      const b = document.createElement('button');
+      b.innerHTML = esc(app.name) + '<small>' + esc(app.package || '') + rankNote + '</small>';
+      if (rank && rank !== 'TRUSTED') b.classList.add('danger');
+      b.addEventListener('click', () => {
+        if (!url) { setAptoideStatus('This result has no direct download link.', 'err'); return; }
+        installFromUrl(url, app.name, b);
+      });
+      aptoideResults.appendChild(b);
+    });
+  } catch (error) {
+    setAptoideStatus('Aptoide search failed: ' + error.message, 'err');
+  }
+}
+document.getElementById('aptoide-go').addEventListener('click', aptoideSearch);
+document.getElementById('aptoide-q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aptoideSearch(); } });
+
+function renderCurated() {
+  curatedResults.innerHTML = '';
+  curatedApps.forEach(app => {
+    const b = document.createElement('button');
+    const already = app.pkg && installedPkgs.has(app.pkg);
+    if (already) b.classList.add('installed');
+    b.innerHTML = esc(app.label) + '<small>' + esc(app.note || '') + (already ? ' · installed' : '') + '</small>';
+    b.addEventListener('click', () => installFromUrl(app.url, app.label, b));
+    curatedResults.appendChild(b);
+  });
+}
+
+async function pullInstalled() {
+  installedResults.innerHTML = '<div class="empty">loading…</div>';
+  try {
+    const r = await fetch('/cgi-bin/appstore.cgi?action=installed&token=' + encodeURIComponent(token), {cache:'no-store'});
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.detail);
+    installedPkgs = new Set(j.packages || []);
+    installedResults.innerHTML = '';
+    if (!installedPkgs.size) { installedResults.innerHTML = '<div class="empty">nothing sideloaded yet</div>'; }
+    installedPkgs.forEach(pkg => {
+      const b = document.createElement('button');
+      b.className = 'danger';
+      b.textContent = pkg;
+      b.title = 'Tap to uninstall';
+      b.addEventListener('click', async () => {
+        if (!confirm('Uninstall ' + pkg + '?')) return;
+        b.disabled = true;
+        try {
+          const body = new URLSearchParams({action:'uninstall', pkg, token, confirmation:'UNINSTALL'});
+          const rr = await fetch('/cgi-bin/appstore.cgi', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body, cache:'no-store'});
+          const jj = await rr.json();
+          if (jj.status !== 'ok') throw new Error(jj.detail);
+          pullInstalled();
+        } catch (error) {
+          b.disabled = false;
+          alert('Uninstall failed: ' + error.message);
+        }
+      });
+      installedResults.appendChild(b);
+    });
+    renderCurated();
+  } catch (error) {
+    installedResults.innerHTML = '<div class="empty">could not load</div>';
+  }
+}
+
+async function loadCuratedApps() {
+  try {
+    const r = await fetch('/curated-apps.json?v=' + Date.now(), {cache:'no-store'});
+    curatedApps = await r.json();
+  } catch (error) {
+    curatedApps = [];
+  }
+  renderCurated();
+}
+
+document.getElementById('install-card').addEventListener('toggle', function onInstallToggle() {
+  if (!this.open || installCardLoaded) return;
+  installCardLoaded = true;
+  loadCuratedApps();
+  pullInstalled();
+});
 
 /* ---------------- advanced settings ---------------- */
 let settingsLoaded = false;
@@ -1241,6 +1532,13 @@ function setSettingsStatus(message, kind) {
   settingsStatus.classList.toggle('err', kind === 'err');
 }
 
+const deviceSettingsStatus = document.getElementById('device-settings-status');
+function setDeviceSettingsStatus(message, kind) {
+  deviceSettingsStatus.textContent = message;
+  deviceSettingsStatus.classList.toggle('ok', kind === 'ok');
+  deviceSettingsStatus.classList.toggle('err', kind === 'err');
+}
+
 async function settingsRequest(action, values, method) {
   const body = new URLSearchParams({action, token});
   Object.entries(values || {}).forEach(([key, value]) => body.set(key, value));
@@ -1280,8 +1578,14 @@ function renderSettings(result) {
 
 async function pullSettings() {
   setSettingsStatus('Loading projector settings…');
-  try { renderSettings(await settingsRequest('status')); }
-  catch (error) { setSettingsStatus('Settings load failed: ' + error.message, 'err'); }
+  setDeviceSettingsStatus('Loading projector settings…');
+  try {
+    renderSettings(await settingsRequest('status'));
+    setDeviceSettingsStatus('Power and interface settings loaded.', 'ok');
+  } catch (error) {
+    setSettingsStatus('Settings load failed: ' + error.message, 'err');
+    setDeviceSettingsStatus('Settings load failed: ' + error.message, 'err');
+  }
 }
 
 pqInputs.filter(input => input.type === 'range').forEach(input => {
@@ -1402,13 +1706,13 @@ document.getElementById('settings-apply').addEventListener('click', async () => 
   const controls = [...document.querySelectorAll('[data-setting]')];
   if (!confirm('Apply the selected power and interface settings?')) return;
   const button = document.getElementById('settings-apply');
-  button.disabled = true; setSettingsStatus('Applying device settings…');
+  button.disabled = true; setDeviceSettingsStatus('Applying device settings…');
   try {
     const values = Object.fromEntries(controls.map(input => [input.dataset.setting, input.value]));
     renderSettings(await settingsRequest('device_apply', values, 'POST'));
-    setSettingsStatus('Power and interface settings applied.', 'ok');
+    setDeviceSettingsStatus('Power and interface settings applied.', 'ok');
   } catch (error) {
-    setSettingsStatus('Device settings failed: ' + error.message, 'err');
+    setDeviceSettingsStatus('Device settings failed: ' + error.message, 'err');
   } finally { button.disabled = false; }
 });
 

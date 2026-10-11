@@ -1,0 +1,20 @@
+[
+  {
+    "label": "F-Droid",
+    "pkg": "org.fdroid.fdroid",
+    "note": "The F-Droid app store itself — official link",
+    "url": "https://f-droid.org/F-Droid.apk"
+  },
+  {
+    "label": "VLC",
+    "pkg": "org.videolan.vlc",
+    "note": "Plays almost any video or audio file — official VideoLAN build for this projector (ARMv7)",
+    "url": "https://get.videolan.org/vlc-android/3.7.1/VLC-Android-3.7.1-armeabi-v7a.apk"
+  },
+  {
+    "label": "TV Bro",
+    "pkg": "com.phlox.tvwebbrowser",
+    "note": "Lightweight web browser for TV remotes — official GitHub release",
+    "url": "https://github.com/truefedex/tv-bro/releases/download/v2.1.6/tvbro-2.1.6-generic-geckoExcluded.apk"
+  }
+]
