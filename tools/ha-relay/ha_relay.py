@@ -187,13 +187,19 @@ def keep_tunnel():
     serial = cfg["projector"]
     rule = f"tcp:{PORT}"
     failures = 0
+    was_ok = None
     while True:
-        if rule not in adb("-s", serial, "reverse", "--list"):
+        # Re-issue the reverse every round: if the host adb server restarted,
+        # the device still lists the rule but nothing listens behind it.
+        if "device" not in adb("-s", serial, "get-state"):
             adb("connect", serial)
-            adb("-s", serial, "reverse", rule, rule)
-            ok = rule in adb("-s", serial, "reverse", "--list")
+        adb("-s", serial, "reverse", rule, rule)
+        ok = rule in adb("-s", serial, "reverse", "--list")
+        if ok != was_ok:
             print(f"tunnel {'up' if ok else 'down'} via {serial}", flush=True)
-            failures = 0 if ok else failures + 1
+            was_ok = ok
+        failures = 0 if ok else failures + 1
+        if not ok:
             if failures >= 3:
                 host, _, port = serial.partition(":")
                 found = find_projector(host.rsplit(".", 1)[0])
