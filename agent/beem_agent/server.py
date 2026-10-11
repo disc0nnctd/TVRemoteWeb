@@ -70,6 +70,7 @@ RUNTIME_ASSETS = {
     "files/qrcode.js": 0o644,
     "files/curated-apps.json": 0o644,
     "files/pqcli.dex": 0o644,
+    "files/mediactl.dex": 0o644,
     "files/app/tvremoteweb-qr.apk": 0o644,
     "files/app/versionCode": 0o644,
     "files/app/tvremoteweb-cast.apk": 0o644,

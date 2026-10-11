@@ -51,6 +51,7 @@ url="$(get_param url 2>/dev/null || true)"
 splash="$(get_param splash 2>/dev/null || true)"
 kill_pid="$(get_param kill 2>/dev/null || true)"
 admin="$(get_param admin 2>/dev/null || true)"
+seek="$(get_param seek 2>/dev/null || true)"
 
 # sunxi-ir-uinput exposes REL_X/REL_Y + BTN_MOUSE — send raw evdev events for a real cursor
 MOUSE_EV="/dev/input/event7"
@@ -80,6 +81,19 @@ if [ -n "$k" ]; then
   esac
   input keyevent "KEYCODE_$key" >/dev/null 2>&1
   detail="keyevent KEYCODE_$key"
+fi
+
+# Relative seek in seconds through the active media session (mediactl.dex);
+# Stremio ignores the rewind/fast-forward keys, so they are only the fallback.
+if [ -n "$seek" ]; then
+  case "$seek" in -[0-9]*|[0-9]*) ;; *) seek=0 ;; esac
+  out="$(CLASSPATH=/data/adb/modules/tvremoteweb/files/mediactl.dex app_process /system/bin com.tvremoteweb.MediaCtl seek "${seek}000" 2>/dev/null)"
+  if [ -n "$out" ] && [ "$out" != none ]; then
+    detail="seek ${seek}s: ${out%% *}"
+  else
+    case "$seek" in -*) input keyevent KEYCODE_MEDIA_REWIND ;; *) input keyevent KEYCODE_MEDIA_FAST_FORWARD ;; esac
+    detail="seek ${seek}s: no seekable player, sent media key"
+  fi
 fi
 
 if [ -n "$t" ]; then

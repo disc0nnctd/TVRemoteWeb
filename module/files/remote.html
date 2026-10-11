@@ -332,11 +332,15 @@
     <div class="card">
       <div class="sec">Media</div>
       <div class="row">
-        <button data-k="MEDIA_PLAY_PAUSE" class="acc">⏯</button>
         <button data-k="MEDIA_PREVIOUS">⏮</button>
-        <button data-k="MEDIA_REWIND">⏪</button>
-        <button data-k="MEDIA_FAST_FORWARD">⏩</button>
+        <button data-k="MEDIA_PLAY_PAUSE" class="acc">⏯</button>
         <button data-k="MEDIA_NEXT">⏭</button>
+      </div>
+      <div class="row">
+        <button data-seek="-30">⏪ 30s</button>
+        <button data-seek="-10">⏪ 10s</button>
+        <button data-seek="10">10s ⏩</button>
+        <button data-seek="30">30s ⏩</button>
       </div>
       <div class="row">
         <button data-sys="voldown">🔉 Vol −</button>
@@ -873,6 +877,7 @@ document.querySelectorAll('button[data-sys]').forEach(b => b.addEventListener('c
   if (b.dataset.sys === 'reboot' && !confirm('Reboot the projector?')) return;
   call('sys=' + b.dataset.sys);
 }));
+document.querySelectorAll('button[data-seek]').forEach(b => b.addEventListener('click', () => call('seek=' + b.dataset.seek)));
 document.querySelectorAll('button[data-app]').forEach(b => b.addEventListener('click', () => call('app=' + b.dataset.app)));
 
 /* ---------------- press-and-hold repeat for D-pad + volume ---------------- */
