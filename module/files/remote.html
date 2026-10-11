@@ -784,7 +784,11 @@
 <script src="/keystone.js?v=20260902-calibration-clamp"></script>
 <script>
 const params = new URLSearchParams(location.search);
-const token  = params.get('token') || '';
+// No ?token in the URL: fetch the PIN from the projector, so a plain bookmark works.
+const token  = params.get('token') || (() => {
+  try { const x = new XMLHttpRequest(); x.open('GET', '/cgi-bin/pin.cgi', false); x.send(); return x.status === 200 ? x.responseText.trim() : ''; }
+  catch (e) { return ''; }
+})();
 document.getElementById('host').textContent = location.host;
 
 /* ---------------- tabs ---------------- */
