@@ -4,7 +4,7 @@
 #
 # Responsibilities:
 #   1. pick the mousedaemon binary matching this device's ABI
-#   2. generate a random access token (never shipped in the repo)
+#   2. remove any old access token (household mode: no PIN)
 #   3. install the bundled "Phone Remote QR" launcher tile APK
 #
 # SPDX-License-Identifier: MIT
@@ -42,23 +42,10 @@ rm -f "$BINDIR"/mousedaemon-*
 [ -f "$BINDIR/mousedaemon" ] && chmod 755 "$BINDIR/mousedaemon"
 
 # -------------------------------------------------------------- token ----
+# Household mode: no access token. The remote is open to anyone on the LAN.
 mkdir -p "$STATE"
-if [ ! -s "$STATE/token" ]; then
-  TOKEN=""
-  # prefer the kernel CSPRNG
-  if [ -r /dev/urandom ]; then
-    TOKEN="$(head -c 32 /dev/urandom 2>/dev/null | sha256sum 2>/dev/null | cut -c1-24)"
-  fi
-  # fall back to whatever entropy we can reach
-  [ -z "$TOKEN" ] && TOKEN="$(printf '%s%s%s' "$(date +%s%N 2>/dev/null)" "$$" "$(getprop ro.serialno)" | sha256sum | cut -c1-24)"
-  printf '%s' "$TOKEN" > "$STATE/token"
-  chmod 600 "$STATE/token"
-  ui_print "- generated a fresh access token"
-else
-  ui_print "- keeping the existing access token"
-fi
-PIN="$(cat "$STATE/token" | sha256sum | cut -c1-6)"
-ui_print "- your PIN: $PIN"
+rm -f "$STATE/token"
+ui_print "- no access code (open to the home network)"
 
 # ---------------------------------------------------------------- APK ----
 APK="$MODPATH/files/app/tvremoteweb-qr.apk"

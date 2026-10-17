@@ -554,7 +554,7 @@
 
     <details class="card proc-vault" id="proc-vault">
       <summary>
-        <span class="proc-vault-title"><strong>Process Monitor</strong><small>Protected dangerous controls · remote PIN required</small></span>
+        <span class="proc-vault-title"><strong>Process Monitor</strong><small>Dangerous controls · kill only what you recognise</small></span>
       </summary>
       <div class="proc-vault-body">
         <form class="proc-lock" id="proc-lock">
@@ -1845,13 +1845,19 @@ async function pullStats(includeProcs, password) {
   } catch (e) { tsEl.textContent = 'fetch failed'; return false; }
 }
 async function pullProcs() {
-  if (!processPassword) return;
+  if (!processPassword && token) return;
   const ok = await pullStats(true, processPassword);
   if (!ok) lockProcessMonitor('Session expired. Enter the PIN again.');
 }
 
 function lockProcessMonitor(message) {
   processPassword = '';
+  if (!token) {  // no PIN on this projector: nothing to unlock
+    procLockForm.hidden = true;
+    procControls.hidden = false;
+    document.getElementById('proc-lock-button').hidden = true;
+    return;
+  }
   procPasswordInput.value = '';
   procLockForm.hidden = false;
   procControls.hidden = true;
@@ -1916,7 +1922,8 @@ liveBtn.addEventListener('click', () => setLive(liveTimer === null));
 document.getElementById('proc-refresh').addEventListener('click', pullProcs);
 document.getElementById('proc-lock-button').addEventListener('click', () => lockProcessMonitor());
 procLockForm.addEventListener('submit', unlockProcessMonitor);
-procVault.addEventListener('toggle', () => { if (!procVault.open) lockProcessMonitor(); });
+procVault.addEventListener('toggle', () => { if (!procVault.open) lockProcessMonitor(); else if (!token) pullProcs(); });
+if (!token) lockProcessMonitor();
 
 /* pause live polling when the tab is hidden */
 document.addEventListener('visibilitychange', () => {

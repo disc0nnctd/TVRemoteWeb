@@ -183,7 +183,7 @@ if [ -n "$splash" ]; then
 fi
 
 if [ -n "$kill_pid" ]; then
-  if [ -z "$pin" ] || [ "${HTTP_X_PROCESS_PASSWORD:-}" != "$pin" ]; then
+  if [ -n "$pin" ] && [ "${HTTP_X_PROCESS_PASSWORD:-}" != "$pin" ]; then
     echo "Status: 403 Forbidden"
     echo "Content-Type: application/json"
     echo

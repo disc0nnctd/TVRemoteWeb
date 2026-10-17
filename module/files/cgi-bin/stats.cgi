@@ -31,7 +31,7 @@ fi
 top_n="$(get_param top 2>/dev/null || echo 0)"
 case "$top_n" in ''|*[!0-9]*) top_n=0 ;; esac
 [ "$top_n" -gt 50 ] && top_n=50
-if [ "$top_n" -gt 0 ] && { [ -z "$pin" ] || [ "${HTTP_X_PROCESS_PASSWORD:-}" != "$pin" ]; }; then
+if [ "$top_n" -gt 0 ] && { [ -n "$pin" ] && [ "${HTTP_X_PROCESS_PASSWORD:-}" != "$pin" ]; }; then
   echo "Status: 403 Forbidden"
   echo "Content-Type: application/json"
   echo

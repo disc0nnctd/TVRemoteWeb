@@ -68,6 +68,8 @@ ssid="$(dumpsys wifi 2>/dev/null | "$BB" grep -oE 'SSID: [^ ,]+' | head -n 1 | "
 # Remote URL is the primary target of the QR
 remote_url="http://${ip}:${PORT}/remote.html"
 [ -n "$pin" ] && remote_url="${remote_url}?token=${pin}"
+pin_html=""; pin_meta=""
+[ -n "$pin" ] && { pin_html=" &nbsp; PIN: <b>${pin}</b>"; pin_meta=" &nbsp;•&nbsp; PIN: ${pin}"; }
 
 # Query params — ?mode=splash for fullscreen boot splash styling
 mode="mini"
@@ -109,7 +111,7 @@ cat <<EOF
     </div>
     <div class="card"><div id="qr"></div></div>
     <div class="info">
-      or open <b>${ip}:${PORT}/remote.html</b> &nbsp; PIN: <b>${pin}</b>
+      or open <b>${ip}:${PORT}/remote.html</b>${pin_html}
     </div>
   </div>
   <div class="dismiss">Press BACK to dismiss</div>
@@ -153,7 +155,7 @@ cat <<EOF
     <div class="box">
       <div id="qr_code" class="qr" aria-label="Dashboard QR"></div>
       <div class="url">${remote_url}</div>
-      <div class="meta">Wi-Fi: ${ssid} &nbsp;•&nbsp; PIN: ${pin}</div>
+      <div class="meta">Wi-Fi: ${ssid}${pin_meta}</div>
     </div>
   </div>
   <script>
