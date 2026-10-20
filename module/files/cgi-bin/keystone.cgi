@@ -49,8 +49,7 @@ if [ -s "$TOKEN_FILE" ]; then
   [ -n "$token_full" ] && pin="$(printf '%s' "$token_full" | sha256sum | cut -c1-6)"
 fi
 qt="$(get_param token 2>/dev/null || true)"
-[ -z "$token_full" ] && respond_error "projector token is unavailable"
-if [ "$qt" != "$token_full" ] && [ "$qt" != "$pin" ]; then
+if [ -n "$token_full" ] && [ "$qt" != "$token_full" ] && [ "$qt" != "$pin" ]; then
   echo "Status: 403 Forbidden"; json_headers; printf '{"status":"err","detail":"forbidden"}\n'; exit 0
 fi
 
