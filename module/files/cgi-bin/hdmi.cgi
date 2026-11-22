@@ -38,7 +38,7 @@ status="ok"; detail="HDMI inputs are ready."
 case "$action" in
   ''|status) ;;
   picker)
-    if am start --user 0 -n "$SOURCE_ACTIVITY" --activity-new-task >/dev/null 2>&1; then
+    if am start --user 0 -n "$SOURCE_ACTIVITY" >/dev/null 2>&1; then
       detail="Input selector opened on the projector."
     else
       status="err"; detail="The built-in input selector could not open."
@@ -51,7 +51,7 @@ case "$action" in
       source="$(printf '%s' "$action" | tr '[:lower:]' '[:upper:]')"
       if am start --user 0 -n "$LIVE_ACTIVITY" \
           --es input_source "$source" --ez manual_set_source true \
-          --activity-new-task --activity-clear-top >/dev/null 2>&1; then
+          --activity-clear-top >/dev/null 2>&1; then
         detail="$source selected."
       else
         status="err"; detail="$source could not be selected."

@@ -111,14 +111,16 @@ fi
 if [ -n "$url" ]; then
   # If url given + app given, target that app; else system chooser
   if [ -n "$app" ]; then
-    am start -a android.intent.action.VIEW -d "$url" "$app" >/dev/null 2>&1
+    am start -a android.intent.action.VIEW -d "$url" -p "$app" >/dev/null 2>&1
     detail="open $url in $app"
   else
     am start -a android.intent.action.VIEW -d "$url" >/dev/null 2>&1
     detail="open $url"
   fi
 elif [ -n "$app" ]; then
-  monkey -p "$app" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+  # TV apps (e.g. TV Bro) only declare LEANBACK_LAUNCHER; try it when LAUNCHER finds nothing.
+  monkey -p "$app" -c android.intent.category.LAUNCHER 1 2>&1 | grep -q "No activities found" \
+    && monkey -p "$app" -c android.intent.category.LEANBACK_LAUNCHER 1 >/dev/null 2>&1
   detail="launch: $app"
 fi
 
