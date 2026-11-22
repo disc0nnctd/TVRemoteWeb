@@ -88,6 +88,7 @@ fi
 # --------------------------------------------------------- permissions ----
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive "$MODPATH/files/cgi-bin" 0 0 0755 0755
+[ -d "$MODPATH/system/vendor/usr/keylayout" ] && set_perm_recursive "$MODPATH/system/vendor/usr/keylayout" 0 0 0755 0644 u:object_r:vendor_keylayout_file:s0
 [ -f "$BINDIR/mousedaemon" ] && set_perm "$BINDIR/mousedaemon" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755
 [ -f "$MODPATH/action.sh" ] && set_perm "$MODPATH/action.sh" 0 0 0755

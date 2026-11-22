@@ -80,8 +80,8 @@ pairing dance. This is a web page served by the box itself.
   offline. A Cast tile on the home screen offers the same receivers.
 - **System monitor** — CPU and GPU temperature, frequency, load, RAM, swap,
   storage, uptime
-- **Password-gated process manager** — collapsed at the bottom of Tools; enter
-  the projector remote PIN before viewing processes or using a kill button
+- **Process manager** — collapsed at the bottom of Tools; view and kill
+  processes
 - **Maintenance** — trim caches, drop page cache, cycle Wi-Fi, restart services,
   tail logcat
 - **Advanced settings** — timeout (including practical Never), screensaver,
@@ -92,6 +92,12 @@ pairing dance. This is a web page served by the box itself.
   image from a phone photo, refine either set of corners with draggable nodes,
   preview, apply, re-edit, and roll back; its simple default flow starts at a
   centered 55% image while the full manual alignment controls stay available
+- **IR remote button fixes** — on the Beem 470 the Netflix key opens the input
+  source menu and Menu opens Settings (both did nothing); the YouTube key
+  opens Miracast. Shipped as a vendor key-layout overlay in the module
+- **Beem Control** — optional dashboard on a LAN machine (`tools/beem-control`)
+  that serves the remote over Tailscale and adds one-tap runtime updates, APK
+  install and screenshots
 - **QR tile on the home screen** — a tiny bundled launcher app that shows a QR
   of the current address, regenerated on every open so it survives DHCP changes
 
@@ -161,21 +167,12 @@ badly.
 This is designed for a home LAN and the threat model is "someone else on my
 Wi-Fi", not "the public internet".
 
-- **Household mode:** the remote fetches its PIN from `pin.cgi`, so opening
-  `http://<projector>:8787/` works without scanning the QR. The QR splash
-  already showed the PIN to anyone on the LAN, so this adds no new exposure,
-  but it does mean **anyone on your Wi-Fi can use the remote**.
-- Every other endpoint requires the token; requests without it get `403`
-- Process listing and kill actions require the remote PIN again through a
-  separate request header; the browser keeps it only in memory while unlocked
-- The token file is `0600` and root-owned
-- The WebSocket refuses every command until the token frame arrives
-- **Traffic is plain HTTP and the token is in the query string.** Anyone who
-  can watch your LAN traffic can lift it.
+- **No access code.** Since 1.3.0 the install deletes any old token, so
+  **anyone on your Wi-Fi can use the remote**, including the process manager
+- **Traffic is plain HTTP.** Anyone who can watch your LAN traffic sees it.
 - **Do not port-forward this.** The CGI layer runs as root by design, since
-  that is what `pm`, `input` and evdev writes require.
-
-Rotate the token by deleting `/data/adb/tvremoteweb/token` and rebooting.
+  that is what `pm`, `input` and evdev writes require. For remote access use
+  a private network such as Tailscale (see `tools/beem-control`).
 
 ## Building
 
