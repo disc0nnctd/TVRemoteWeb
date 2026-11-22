@@ -1,0 +1,11 @@
+[Unit]
+Description=Beem Control (projector remote + updates, published with tailscale serve on :8796)
+After=network-online.target
+
+[Service]
+ExecStart=%h/projects/TVRemoteWeb/agent/.venv/bin/python %h/projects/TVRemoteWeb/tools/beem-control/beem_control.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
